@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="100" height="100" viewBox="0 0 100 100"
+     xmlns="http://www.w3.org/2000/svg">
+  <g
+    fill="white"
+    stroke="white"
+  >
+    <polygon
+      points="40,5 60,5 60,40 95,40 95,60 60,60 60,95 40,95 40,60 5,60 5,40 40,40"
+      style="stroke-width:8;stroke-linejoin:round;"
+    />
+  </g>
+</svg>

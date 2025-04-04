@@ -1,0 +1,54 @@
+import { Block, Bomb } from "@domains";
+
+export class BlockSet {
+  constructor(
+    public blocks: Block[] = [],
+    public extraBlocks: Block[] = [],
+  ) {}
+
+  toString(): string {
+    return this.blocks.map((b) => b.toString()).join("");
+  }
+
+  addToSet(block: Block): BlockSet {
+    this.blocks.push(block);
+    return this;
+  }
+
+  addExtraBlocks(blocks: Block[]): BlockSet {
+    blocks.forEach((b) => {
+      if (!this.blocks.includes(b)) {
+        this.extraBlocks.push(b);
+      }
+    });
+    return this;
+  }
+
+  hasBlock(block: Block): boolean {
+    return this.blocks.some((b) => b.id === block.id);
+  }
+
+  get allBlocks(): Block[] {
+    return [...this.blocks, ...this.extraBlocks];
+  }
+
+  get hasMinimumLength(): boolean {
+    return this.blocks.length >= 4;
+  }
+
+  get bombs(): Bomb[] {
+    return this.blocks.filter((b) => b.type.isBomb) as Bomb[];
+  }
+
+  get isPureType(): boolean {
+    return this.blocks.every((b) => b.hasSameTypeAs(this.blocks[0]));
+  }
+
+  get containsLock(): boolean {
+    return this.blocks.some((b) => b.type.isLock);
+  }
+
+  get containsKey(): boolean {
+    return this.blocks.some((b) => b.type.isKey);
+  }
+}

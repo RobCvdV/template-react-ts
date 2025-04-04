@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="100" height="100" viewBox="0 0 100 100"
+     xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(-0.5,0)"
+     fill="white"
+     stroke="white"
+  >
+    <circle
+      cx="28"
+      cy="48"
+      r="18"
+      stroke-width="15"
+      fill-opacity="0"
+      style=""
+    />
+    <!-- Key body -->
+    <rect x="50" y="40" width="45" height="13" style="stroke-width:8;stroke-linejoin:round;"/>
+
+    <!-- Key teeth -->
+    <rect x="65" y="56" width="8" height="12" style="stroke-width:3;stroke-linejoin:round;"/>
+    <rect x="83" y="56" width="8" height="10" style="stroke-width:3;stroke-linejoin:round;"/>
+  </g>
+</svg>
