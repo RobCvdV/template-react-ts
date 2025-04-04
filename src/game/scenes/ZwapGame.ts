@@ -1,12 +1,22 @@
-import { EventBus } from "../EventBus";
+import { EventBus, GameSettings, GameTheme, PuzzleBoard, themes } from "@game";
 import { Scene } from "phaser";
-import { GameSettings, PuzzleBoard } from "@/game";
+
+type GeneralSettings = {
+  theme: GameTheme;
+  screenWidth: number;
+  screenHeight: number;
+};
 
 export class ZwapGame extends Scene {
   camera: Phaser.Cameras.Scene2D.Camera;
   background: Phaser.GameObjects.Image;
   gameText: Phaser.GameObjects.Text;
   board: PuzzleBoard;
+  settings: GeneralSettings = {
+    theme: themes.boyish,
+    screenWidth: 600,
+    screenHeight: 1200,
+  };
 
   constructor() {
     super("ZwapGame");
@@ -14,9 +24,8 @@ export class ZwapGame extends Scene {
 
   create() {
     this.camera = this.cameras.main;
-    this.camera.setBackgroundColor(0x00ff00);
 
-    this.background = this.add.image(512, 384, "background");
+    this.background = this.add.image(300, 600, "background");
     this.background.setAlpha(0.5);
 
     // this.gameText = this.add.text(512, 384, 'Make something fun!\nand share it with us:\nsupport@phaser.io', {

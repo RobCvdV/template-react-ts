@@ -1,7 +1,6 @@
 import { cons, getUuid, Id } from "@core";
 import { GameObjectStruct, SpriteData } from "@/game/core/GameObjectStruct.ts";
-import { BlockColor, BlockType } from "@game";
-import { Scene } from "phaser";
+import { BlockType, ZwapGame } from "@game";
 import Color = Phaser.Display.Color;
 
 export type BlockData = SpriteData & {
@@ -19,7 +18,7 @@ export class Block<
 > extends GameObjectStruct<T> {
   private tween: Phaser.Tweens.Tween | undefined;
   public bType: BlockType;
-  public bColor: BlockColor;
+  public bColor: Color;
 
   // constructor(
   //   scene: Phaser.Scene,
@@ -50,18 +49,18 @@ export class Block<
   //   });
   // }
 
-  static create<T extends BlockData = BlockData>(
-    scene: Phaser.Scene,
-    block: T,
-  ) {
-    const bType: BlockType = BlockType.byId<BlockType>(block.type);
-    const bColor: BlockColor = BlockColor.byId<BlockColor>(block.color);
-    cons.log("Construct Block", block, bType?.blockAsset, bColor?.phaser.color);
+  static create<T extends BlockData = BlockData>(scene: ZwapGame, block: T) {
+    const bType: BlockType = scene.settings.theme.shapes[block.type];
+    const bColor: Color = Color.RGBStringToColor(
+      scene.settings.theme.colors[block.color],
+    );
+    // cons.log("Construct Block", block, bType?.blockAsset, bColor?.phaser.color);
+
     const bl = new Block(scene, block, block.x, block.y, bType.blockAsset);
     bl.bType = bType;
-    bl.bColor = BlockColor.byId<BlockColor>(block.color);
+    bl.bColor = bColor;
     bl.addToUpdateList();
-    bl.setTint(bColor.phaser.color).setOrigin(0.5, 0.5);
+    bl.setTint(bColor.color).setOrigin(0.5, 0.5);
 
     if (block.isSelected) {
       bl.setSelected(true);
@@ -81,9 +80,16 @@ export class Block<
   }
 
   changeColor(colorNr: number): this {
-    this.setTint(BlockColor.byId<BlockColor>(colorNr).phaser.color);
+    const { colors } = (this.scene as ZwapGame).settings.theme;
+    cons.log("Change color", colorNr, colors[colorNr]);
+    this.bColor = Color.RGBStringToColor(colors[colorNr]);
+    this.setTint(this.bColor.color);
     this.data.set("color", colorNr);
     return this;
+  }
+
+  get colorIndex(): number {
+    return this.getData("color");
   }
 
   changeType(typeNr: number): this {
@@ -114,12 +120,12 @@ export class Block<
   setSelected(selected: boolean): this {
     this.data.set("isSelected", selected);
     if (selected) {
-      const startColor = this.bColor.phaser.clone().darken(10);
-      const endColor = this.bColor.phaser.clone().brighten(40);
+      const startColor = this.bColor.clone().darken(10);
+      const endColor = this.bColor.clone().brighten(40);
       this.tween = this.scene.tweens.addCounter({
         from: 0,
         to: 100,
-        duration: 500,
+        duration: 200,
         ease: "Sine.easeIn",
         repeat: -1,
         yoyo: true,
@@ -137,10 +143,10 @@ export class Block<
     } else {
       this.tween?.stop();
       const startColor = Color.IntegerToColor(this.tint);
-      const endColor = this.bColor.phaser.clone();
+      const endColor = this.bColor.clone();
       this.tween = this.scene.tweens.addCounter({
-        from: 100,
-        to: 0,
+        from: 0,
+        to: 100,
         duration: 200,
         onUpdate: (tween: Phaser.Tweens.Tween) => {
           const value = tween.getValue();
@@ -165,7 +171,7 @@ export type BombData = Omit<BlockData, "type"> & {
 export class Bomb extends Block<BombData> {
   readonly counter: number;
 
-  static create(scene: Phaser.Scene, data: BombData): Bomb {
+  static create(scene: ZwapGame, data: BombData): Bomb {
     const bl = new Bomb(scene, {
       ...data,
       type: 11,
@@ -181,7 +187,7 @@ export class Bomb extends Block<BombData> {
   }
 }
 
-export function makeBlock(scene: Scene, state: BlockData): Block {
+export function makeBlock(scene: ZwapGame, state: BlockData): Block {
   switch (state.type as Id) {
     case BlockType.Bomb.id:
       return Bomb.create(scene, state);
@@ -191,7 +197,7 @@ export function makeBlock(scene: Scene, state: BlockData): Block {
 }
 
 export function makeRandomBlock(
-  scene: Scene,
+  scene: ZwapGame,
   maxColors: number,
   maxBlockTypes: number,
   row: number,

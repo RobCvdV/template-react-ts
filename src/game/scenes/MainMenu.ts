@@ -55,7 +55,7 @@ export class MainMenu extends Scene {
     this.scene.start("ZwapGame");
   }
 
-  moveLogo(vueCallback: ({ x, y }: { x: number; y: number }) => void) {
+  moveLogo() {
     if (this.logoTween) {
       if (this.logoTween.isPlaying()) {
         this.logoTween.pause();
@@ -77,16 +77,6 @@ export class MainMenu extends Scene {
         y: { value: 80, duration: 1500, ease: "Sine.easeOut" },
         duration: 100,
         yoyo: true,
-
-        onUpdate: (tw) => {
-          // console.log("onUpdate", tw.);
-          if (vueCallback) {
-            vueCallback({
-              x: Math.floor(this.logo.x),
-              y: Math.floor(this.logo.y),
-            });
-          }
-        },
         repeat: -1,
       });
     }

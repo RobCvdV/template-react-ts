@@ -7,7 +7,6 @@ function App() {
 
   //  References to the PhaserGame component (game and scene are exposed)
   const phaserRef = useRef<IRefPhaserGame | null>(null);
-  const [spritePosition, setSpritePosition] = useState({ x: 0, y: 0 });
 
   const changeScene = () => {
     if (phaserRef.current) {
@@ -25,9 +24,7 @@ function App() {
 
       if (scene && scene.scene.key === "MainMenu") {
         // Get the update logo position
-        scene.moveLogo(({ x, y }) => {
-          setSpritePosition({ x, y });
-        });
+        scene.moveLogo();
       }
     }
   };
@@ -80,10 +77,6 @@ function App() {
           >
             Toggle Movement
           </button>
-        </div>
-        <div className="spritePosition">
-          Sprite Position:
-          <pre>{`{\n  x: ${spritePosition.x}\n  y: ${spritePosition.y}\n}`}</pre>
         </div>
         <div>
           <button className="button" onClick={addSprite}>

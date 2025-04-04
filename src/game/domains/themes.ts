@@ -1,6 +1,38 @@
 import { BlockType } from "@game";
+import { AnyObject } from "@core";
 
-export const themes = {
+export type GameTheme = {
+  colors: [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
+  shapes: [
+    BlockType,
+    BlockType,
+    BlockType,
+    BlockType,
+    BlockType,
+    BlockType,
+    BlockType,
+    BlockType,
+    typeof BlockType.Lock,
+    typeof BlockType.Key,
+    typeof BlockType.WirelessKey,
+    typeof BlockType.Bomb,
+  ];
+};
+
+export const themes: AnyObject<GameTheme> = {
   boyish: {
     colors: [
       "rgb(120, 71, 66)",
@@ -25,6 +57,7 @@ export const themes = {
       BlockType.Heart,
       BlockType.Xmark,
       BlockType.Wave,
+      // ---------
       BlockType.Lock,
       BlockType.Key,
       BlockType.WirelessKey,
@@ -55,6 +88,7 @@ export const themes = {
       BlockType.Xmark,
       BlockType.Circle,
       BlockType.Wave,
+      // ---------
       BlockType.Lock,
       BlockType.Key,
       BlockType.WirelessKey,
@@ -63,4 +97,4 @@ export const themes = {
   },
 };
 
-export type GameTheme = keyof typeof themes;
+export type GameThemeKey = keyof typeof themes;

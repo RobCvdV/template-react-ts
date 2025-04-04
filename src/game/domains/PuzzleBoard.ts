@@ -18,7 +18,7 @@ import {
   MatchInfo,
   Selection,
 } from "@domains";
-import { Scene } from "phaser";
+import { ZwapGame } from "@/game";
 
 type PuzzleBoardState = {
   id?: Id;
@@ -38,9 +38,8 @@ export class PuzzleBoard extends Struct {
   // data[x][y] is the block at column x and row y
   // data[width - 1][height - 1] is the top-right block
   // the first index is the column, the second index is the row
-  public data = (this.state.data as BlockData[][]).map((row) =>
+  public data = (this.state.data as (Block | BlockData)[][]).map((row) =>
     row.map((cell) => {
-      cons.log("cell", typeof cell, cell);
       if (cell instanceof Block) {
         return cell;
       }
@@ -56,12 +55,12 @@ export class PuzzleBoard extends Struct {
 
   constructor(
     data: PuzzleBoardState,
-    readonly scene: Phaser.Scene,
+    readonly scene: ZwapGame,
   ) {
     super(data);
   }
 
-  static fromSettings(settings: GameSettings, scene: Scene): PuzzleBoard {
+  static fromSettings(settings: GameSettings, scene: ZwapGame): PuzzleBoard {
     return new PuzzleBoard(
       {
         settings: settings,
@@ -247,7 +246,7 @@ export class PuzzleBoard extends Struct {
   private nextRandomColorForBlock(bl: Block) {
     cons.log("nextRandomColorForBlock", bl.id);
     bl.changeColor(
-      (bl.bColor.index +
+      (bl.colorIndex +
         1 +
         Math.floor(Math.random() * this.settings.maxColors)) %
         this.settings.maxColors,
