@@ -8,7 +8,7 @@ import { assertDefined, getNamedLogs, getUuid, Json } from "@core";
  * @property {string} [texture] - The texture key of the sprite.
  */
 export type SpriteData = Json & {
-  id?: string;
+  id: string;
   x?: number;
   y?: number;
   texture?: string;
@@ -111,9 +111,18 @@ export class GameObjectStruct<
    * @param {Partial<T>} partial - The partial data to update.
    * @returns {GameObjectStruct<T>} The updated GameObjectStruct instance.
    */
-  updateData(partial: Partial<T>): GameObjectStruct<T> {
+  updateData(partial: Partial<T>): this {
     this.data.merge(partial);
     return this;
+  }
+
+  set<K extends keyof T>(key: K, value: T[K]): this {
+    this.data.set(key, value);
+    return this;
+  }
+
+  get<K extends keyof T>(key: K): T[K] {
+    return this.data.get(key as string);
   }
 
   // It bases its appearance on the Block type it will receive

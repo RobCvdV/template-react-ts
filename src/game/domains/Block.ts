@@ -90,7 +90,7 @@ export class Block<
     cons.log("Change color", colorNr, colors[colorNr]);
     this.bColor = Color.RGBStringToColor(colors[colorNr]);
     this.setTint(this.bColor.color);
-    this.data.set("color", colorNr);
+    this.set("color", colorNr);
     return this;
   }
 
@@ -100,31 +100,31 @@ export class Block<
 
   changeType(typeNr: number): this {
     this.setTexture(BlockType.byId<BlockType>(typeNr).blockAsset);
-    this.data.set("type", typeNr);
+    this.set("type", typeNr);
     return this;
   }
 
   get id(): string {
-    return this.data.values.id;
+    return this.get("id");
   }
 
   hasSameColorAs(other: Block): boolean {
-    return this.getData("color") === other.getData("color");
+    return this.get("color") === other.get("color");
   }
 
   hasSameTypeAs(other: Block): boolean {
-    return this.getData("type") === other.getData("type");
+    return this.get("type") === other.get("type");
   }
 
   get selected(): boolean {
-    return this.getData("isSelected");
+    return !!this.get("isSelected");
   }
   set selected(selected: boolean) {
     this.setSelected(selected);
   }
 
   setSelected(selected: boolean): this {
-    this.data.set("isSelected", selected);
+    this.set("isSelected", selected);
     if (selected) {
       const border = this.scene.add
         .sprite(this.x, this.y, "block-border")
