@@ -28,7 +28,6 @@ export class Preloader extends Scene {
     this.load.setPath("assets");
 
     this.load.image("logo", "logo.png");
-    this.load.image("star", "star.png");
     this.load.image("background", "bg.png");
     shapes.forEach(([key, path]) => this.load.image(key, path));
     blocks.forEach(([key, path]) => this.load.image(key, path));

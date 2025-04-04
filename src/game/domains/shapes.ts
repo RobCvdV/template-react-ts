@@ -11,6 +11,7 @@ export const shapes = [
   ["key", "shapes/key.svg"],
   ["keyWireless", "shapes/key-wireless.svg"],
   ["bomb", "shapes/bomb.svg"],
+  ["block-border", "shapes/block-border.svg"],
 ] as const;
 export const blocks = [
   ["circle-block", "shapes/circle-block.svg"],

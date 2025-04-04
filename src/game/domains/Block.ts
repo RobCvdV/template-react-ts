@@ -1,7 +1,10 @@
-import { cons, getUuid, Id } from "@core";
+import { AnyObject, cons, getUuid, Id } from "@core";
 import { GameObjectStruct, SpriteData } from "@/game/core/GameObjectStruct.ts";
 import { BlockType, ZwapGame } from "@game";
 import Color = Phaser.Display.Color;
+import Sprite = Phaser.GameObjects.Sprite;
+import Tween = Phaser.Tweens.Tween;
+import ParticleEmitter = Phaser.GameObjects.Particles.ParticleEmitter;
 
 export type BlockData = SpriteData & {
   color: number;
@@ -16,9 +19,10 @@ export type BlockData = SpriteData & {
 export class Block<
   T extends BlockData = BlockData,
 > extends GameObjectStruct<T> {
-  private tween: Phaser.Tweens.Tween | undefined;
+  private tween: Tween | undefined;
   public bType: BlockType;
   public bColor: Color;
+  protected effects: AnyObject<Sprite | Tween | ParticleEmitter> = {};
 
   // constructor(
   //   scene: Phaser.Scene,
@@ -60,7 +64,9 @@ export class Block<
     bl.bType = bType;
     bl.bColor = bColor;
     bl.addToUpdateList();
-    bl.setTint(bColor.color).setOrigin(0.5, 0.5);
+    bl.setTint(bColor.color);
+    bl.setOrigin(0.5, 0.5);
+    bl.setDepth(100);
 
     if (block.isSelected) {
       bl.setSelected(true);
@@ -120,12 +126,19 @@ export class Block<
   setSelected(selected: boolean): this {
     this.data.set("isSelected", selected);
     if (selected) {
+      const border = this.scene.add
+        .sprite(this.x, this.y, "block-border")
+        .setTint(this.tint)
+        .setAlpha(1)
+        .setScale(this.scale * 1.1)
+        .setDepth(101);
+      this.effects.border = border;
       const startColor = this.bColor.clone().darken(10);
-      const endColor = this.bColor.clone().brighten(40);
+      const endColor = this.bColor.clone().brighten(30);
       this.tween = this.scene.tweens.addCounter({
         from: 0,
         to: 100,
-        duration: 200,
+        duration: 300,
         ease: "Sine.easeIn",
         repeat: -1,
         yoyo: true,
@@ -137,28 +150,14 @@ export class Block<
             100,
             value,
           );
-          this.setTint(color.color);
+          border.setTint(color.color);
         },
       });
     } else {
       this.tween?.stop();
-      const startColor = Color.IntegerToColor(this.tint);
-      const endColor = this.bColor.clone();
-      this.tween = this.scene.tweens.addCounter({
-        from: 0,
-        to: 100,
-        duration: 200,
-        onUpdate: (tween: Phaser.Tweens.Tween) => {
-          const value = tween.getValue();
-          const color = Color.Interpolate.ColorWithColor(
-            startColor,
-            endColor,
-            100,
-            value,
-          );
-          this.setTint(color.color);
-        },
-      });
+      this.tween = undefined;
+      this.effects.border?.destroy();
+      delete this.effects.border;
     }
     return this;
   }
