@@ -121,7 +121,7 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
     this.set("isSelected", selected);
     if (selected) {
       const border = this.scene.add
-        .sprite(this.x, this.y, "block-border")
+        .sprite(this.x, this.y + this.settings.offsetY, "block-border")
         .setTint(this.tint)
         .setAlpha(1)
         .setScale(this.scale * 1.1)
@@ -136,6 +136,43 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
         ease: "Sine.easeIn",
         repeat: -1,
         yoyo: true,
+        onUpdate: (tween: Phaser.Tweens.Tween) => {
+          const value = tween.getValue();
+          const color = Color.Interpolate.ColorWithColor(
+            startColor,
+            endColor,
+            100,
+            value,
+          );
+          border.setTint(color.color);
+        },
+      });
+    } else {
+      this.tween?.stop();
+      this.tween = undefined;
+      this.effects.border?.destroy();
+      delete this.effects.border;
+    }
+    return this;
+  }
+
+  setMatchable(matchable: boolean): this {
+    this.set("isMatchable", matchable);
+    if (matchable) {
+      const startColor = this.color.clone().darken(10);
+      const endColor = this.color.clone().brighten(30);
+      const border = this.scene.add
+        .sprite(this.x, this.y + this.settings.offsetY, "block-border")
+        .setTint(this.tint)
+        .setAlpha(1)
+        .setScale(this.scale * 1.1)
+        .setDepth(2);
+      this.effects.border = border;
+      this.tween = this.scene.tweens.addCounter({
+        from: 0,
+        to: 100,
+        duration: 300,
+        ease: "Sine.easeIn",
         onUpdate: (tween: Phaser.Tweens.Tween) => {
           const value = tween.getValue();
           const color = Color.Interpolate.ColorWithColor(

@@ -15,7 +15,10 @@ import {
   Selection,
 } from "@domains";
 import { ZwapGame } from "@/game";
+import { GameFlow } from "@/game/domains/GameFlow.ts";
 import Container = Phaser.GameObjects.Container;
+import Pointer = Phaser.Input.Pointer;
+import Vector2 = Phaser.Math.Vector2;
 
 export type PuzzleBoardState = {
   id?: Id;
@@ -23,7 +26,10 @@ export type PuzzleBoardState = {
   settings: GameSettingsState | GameSettings;
   scene: ZwapGame;
   progress?: GameProgressState | GameProgress;
+  gameState?: GameFlow;
 };
+
+type EventType = "mousedown" | "mouseup" | "mousemove";
 
 const cons = getNamedLogs({ name: "PuzzleBoard" });
 export class PuzzleBoard extends Struct<PuzzleBoardState> {
@@ -32,6 +38,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   readonly settings = ensure(GameSettings, this.state.settings, {});
   readonly scene = this.state.scene;
   readonly blocks: Container;
+  readonly gameFlow = new GameFlow();
 
   // data is a 2D array of Blocks, representing the board
   // data[0][0] is the bottom-left block
@@ -87,7 +94,8 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     return [-1, -1];
   }
 
-  getMatchInfo(bl: Block, selected?: Block): MatchInfo {
+  getMatchInfo(bl: Block): MatchInfo {
+    const { selected } = this.gameFlow;
     if (!selected || !bl || selected.id === bl.id) {
       return { kind: "none" } as MatchInfo;
     }
@@ -102,7 +110,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   canSwap(a: Block, b: Block): boolean {
-    return a.hasSameTypeAs(b);
+    return a !== b && a.hasSameTypeAs(b);
   }
 
   getAllSwappableWith(b: Block): Block[] {
@@ -164,7 +172,16 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     this.data[x][y] = newBlock;
   }
 
-  getBlockAt({ x, y }: Position): Block {
+  getBlockAt(pos: Position | Pointer): Block {
+    let { x, y } = pos;
+    if (pos instanceof Pointer) {
+      const localPos = this.getLocalPosition(pos);
+      x = Math.floor(localPos.x / this.settings.blockSpace);
+      y =
+        this.settings.rows -
+        Math.floor(localPos.y / this.settings.blockSpace) -
+        1;
+    }
     return this.data[x][y];
   }
 
@@ -283,35 +300,138 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       .map(([_x, _y]) => this.getBlockAt({ x: _x, y: _y }));
   }
 
-  handleBlockEvent(event: any, block: Block): void {
-    const pos = this.getPosition(block);
-    cons.log("handleBlockEvent", event, block.id, pos);
-    if (event === "click") {
-      cons.log("click", block.id, pos);
-    } else if (event === "hover") {
-      cons.log("hover", block.id, pos);
+  getLocalPosition(pos: Position): Vector2 {
+    return this.blocks.getLocalTransformMatrix().applyInverse(pos.x, pos.y);
+  }
+
+  select(block: Block): void {
+    this.gameFlow.selected?.setSelected(false);
+    this.gameFlow.matchable.forEach((b) => b.setMatchable(false));
+    block.setSelected(true);
+    this.gameFlow.selected = block;
+    this.gameFlow.matchable = this.getAllSwappableWith(block);
+    this.gameFlow.matchable.forEach((b) => b.setMatchable(true));
+    cons.log("selected", block.toLog());
+  }
+
+  deselect(): void {
+    this.gameFlow.selected?.setSelected(false);
+    this.gameFlow.matchable.forEach((b) => b.setMatchable(false));
+    cons.log("deselected", this.gameFlow.selected?.toLog());
+    this.gameFlow.selected = undefined;
+  }
+
+  doReactions(block: Block): void {
+    const match = this.getMatchInfo(block);
+    cons.log(
+      "doReactions",
+      match.kind,
+      match.selection?.selected.toLog(),
+      match.selection?.second.toLog(),
+    );
+    // this.gameFlow.sets.forEach((set) => {
+    //   set.blocks.forEach((b) => {
+    //     b.setMatched(true);
+    //     b.setSelected(false);
+    //   });
+    // });
+    // this.gameFlow.clearSets();
+  }
+
+  dragLine?: Phaser.GameObjects.Line;
+  handleEventDown(event: Pointer) {
+    if (this.gameFlow.interactionDisabled) {
+      return;
+    }
+    event.event.stopPropagation();
+    const block = this.getBlockAt(event);
+    if (block) {
+      if (!this.gameFlow.selected) {
+        this.select(block);
+      } else if (block === this.gameFlow.selected) {
+        this.deselect();
+      } else {
+        this.doReactions(block);
+      }
     }
   }
 
-  toString(): string {
-    return this.data
-      .map((row) => row.map((b) => b.toString()).join(""))
-      .join("\n");
+  handleEventUp(event: Pointer) {
+    if (this.gameFlow.interactionDisabled) {
+      return;
+    }
+    event.event.stopPropagation();
+    const block = this.getBlockAt(event);
+    this.dragLine?.destroy();
+    this.dragLine = undefined;
+    if (!block) {
+      return;
+    }
+    if (this.gameFlow.selected) {
+      this.doReactions(block);
+    }
+    if (this.gameFlow.selected?.id !== block.id) {
+      this.deselect();
+    }
+  }
+
+  handleEventMove(event: Pointer) {
+    if (this.gameFlow.interactionDisabled) {
+      return;
+    }
+    const pos = this.getLocalPosition(event);
+    event.event.stopPropagation();
+    if (this.gameFlow.selected && !this.dragLine) {
+      this.dragLine = this.scene.add
+        .line(
+          this.blocks.x,
+          this.blocks.y,
+          this.gameFlow.selected.x,
+          this.gameFlow.selected.y,
+          pos.x,
+          pos.y,
+          this.gameFlow.selected.color.color,
+          0.5,
+        )
+        .setDepth(10)
+        .setLineWidth(5);
+    } else if (this.dragLine && this.gameFlow.selected) {
+      this.dragLine.setTo(
+        this.gameFlow.selected.x,
+        this.gameFlow.selected.y,
+        pos.x,
+        pos.y,
+      );
+    }
+    // const pos = this.blocks
+    //   .getLocalTransformMatrix()
+    //   .applyInverse(event.x, event.y);
+    // const block = this.getBlockAt(pos);
+    // if (!block) {
+    //   return;
+    // }
+    // this.gameFlow.selected?.setSelected(false);
+    // block.setSelected(true);
+    // this.gameFlow.selected = block;
+  }
+
+  toLog() {
+    return this.data.flatMap((row) => [...row.map((b) => b.toLog()), "\n"]);
   }
 
   private initListeners() {
     this.blocks.setInteractive(
       new Phaser.Geom.Rectangle(
-        0,
-        this.settings.offsetY,
+        this.settings.width / 2,
+        this.settings.height / 2,
         this.settings.width,
         this.settings.height,
       ),
       Phaser.Geom.Rectangle.Contains,
     );
 
-    this.blocks.on("pointerdown", this.handleBlockEvent.bind(this));
-    this.blocks.on("pointerup", this.handleBlockEvent.bind(this));
-    this.blocks.on("pointermove", this.handleBlockEvent.bind(this));
+    this.blocks.on("pointerdown", this.handleEventDown.bind(this));
+    this.blocks.on("pointerup", this.handleEventUp.bind(this));
+    this.blocks.on("pointermove", this.handleEventMove.bind(this));
   }
 }
