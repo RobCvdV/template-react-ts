@@ -15,21 +15,33 @@ export type BlockData = SpriteData & {
   isMatched?: boolean;
 
   settings: GameSettings;
+  handleEvent?: (event: string, data: AnyObject) => void;
 };
+
+export interface BlockDelegate {
+  onBlockDown?: (block: Block) => void;
+  onBlockUp?: (block: Block) => void;
+  onBlockHover?: (block: Block) => void;
+  onBlockOut?: (block: Block) => void;
+  onBlockDragStart?: (block: Block) => void;
+  onBlockDragEnd?: (block: Block) => void;
+}
 
 // the BLockSprite class is a GameObject that represents a block in the game
 export class Block<
   T extends BlockData = BlockData,
 > extends GameObjectStruct<T> {
   private tween: Tween | undefined;
+  private delegate?: BlockDelegate;
   public bType: BlockType;
   public bColor: Color;
   protected effects: AnyObject<Sprite | Tween | ParticleEmitter> = {};
 
-  constructor(scene: ZwapGame, block: T) {
+  constructor(scene: ZwapGame, block: T, delegate?: BlockDelegate) {
     const typeNr = block.type ?? 0;
     const texture = scene.settings.theme.shapes[typeNr].blockAsset;
     super(scene, { ...block, texture });
+    this.delegate = delegate;
     this.setDataEnabled();
     this.setData(block);
     this.addToUpdateList();
@@ -37,7 +49,7 @@ export class Block<
     this.type = this.constructor.name;
     this.set("type", typeNr);
     this.changeColor(block.color);
-    this.setDepth(100);
+    this.setDepth(1);
 
     if (block.isSelected) {
       this.setSelected(true);
@@ -49,9 +61,13 @@ export class Block<
       hitAreaCallback: Phaser.Geom.Rectangle.Contains,
     });
 
-    this.on("pointerup", () => {
-      cons.log("click", this.getData("isSelected"));
-      this.setSelected(!this.getData("isSelected"));
+    this.on("pointerdown", (event: PointerEvent) => {
+      event.stopPropagation();
+      this.delegate?.onBlockDown?.(this);
+    });
+    this.on("pointerover", (event: PointerEvent) => {
+      event.stopPropagation();
+      this.delegate?.onBlockHover?.(this);
     });
   }
 
@@ -109,7 +125,7 @@ export class Block<
         .setTint(this.tint)
         .setAlpha(1)
         .setScale(this.scale * 1.1)
-        .setDepth(101);
+        .setDepth(2);
       this.effects.border = border;
       const startColor = this.bColor.clone().darken(10);
       const endColor = this.bColor.clone().brighten(30);
@@ -151,17 +167,22 @@ export class Block<
       delay: row * 100 + Math.random() * 90,
       onComplete: () => {
         if (row === 0) {
-          this.scene.add.particles(this.x, this.y + halfSpace, "circle", {
-            speedY: { min: -20, max: 20 },
-            lifespan: { min: 500, max: 1000 },
-            duration: 1,
-            quantity: 10,
-            x: { min: -halfSpace, max: halfSpace },
-            blendMode: "ADD",
-            tint: [0x333333, 0x0],
-            scale: { start: 0.1, end: 0.4 },
-            alpha: { start: 0.8, end: 0 },
-          });
+          this.scene.add
+            .particles(this.x, this.y + halfSpace, "cloud", {
+              blendMode: "ADD",
+              duration: 1,
+              quantity: 10,
+              speedX: { min: -30, max: 30 },
+              speedY: { min: -10, max: 10 },
+              rotate: { min: -20, max: 20 },
+              lifespan: { min: 400, max: 1200 },
+              x: { min: -halfSpace, max: halfSpace },
+              tint: [0x333333, 0x0],
+              scaleX: { start: 0.15, end: 0.5, ease: "Sine.easeIn" },
+              scaleY: { start: 0.2, end: 1, ease: "Sine.easeIn" },
+              alpha: { start: 0.8, end: 0, random: true, ease: "Sine.easeOut" },
+            })
+            .setDepth(10);
         }
       },
     });
@@ -206,12 +227,16 @@ export class Bomb extends Block<BombData> {
   }
 }
 
-export function makeBlock(scene: ZwapGame, state: BlockData): Block {
+export function makeBlock(
+  scene: ZwapGame,
+  state: BlockData,
+  delegate?: BlockDelegate,
+): Block {
   switch (state.type as Id) {
     case BlockType.Bomb.id:
-      return new Bomb(scene, state);
+      return new Bomb(scene, state, delegate);
     default:
-      return new Block(scene, state);
+      return new Block(scene, state, delegate);
   }
 }
 
@@ -239,6 +264,7 @@ export function makeRandomBlock(
   settings: GameSettings,
   col: number,
   row: number,
+  delegate?: BlockDelegate,
 ): Block {
-  return makeBlock(scene, randomBlockData(settings, col, row));
+  return makeBlock(scene, randomBlockData(settings, col, row), delegate);
 }

@@ -29,6 +29,7 @@ export class Preloader extends Scene {
 
     this.load.image("logo", "logo.png");
     this.load.image("background", "bg.png");
+    this.load.image("cloud", "sprites/cloud.png");
     shapes.forEach(([key, path]) => this.load.image(key, path));
     blocks.forEach(([key, path]) => this.load.image(key, path));
   }

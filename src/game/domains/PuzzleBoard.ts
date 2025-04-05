@@ -3,6 +3,7 @@ import { ensure, getNamedLogs, getUuid, Id, Position, Struct } from "@core";
 import {
   Block,
   BlockData,
+  BlockDelegate,
   BlockSet,
   GameProgress,
   GameProgressState,
@@ -25,7 +26,10 @@ export type PuzzleBoardState = {
 };
 
 const cons = getNamedLogs({ name: "PuzzleBoard" });
-export class PuzzleBoard extends Struct<PuzzleBoardState> {
+export class PuzzleBoard
+  extends Struct<PuzzleBoardState>
+  implements BlockDelegate
+{
   readonly id: Id = this.state.id ?? getUuid();
   readonly progress = ensure(GameProgress, this.state.progress, {});
   readonly settings = ensure(GameSettings, this.state.settings, {});
@@ -36,10 +40,15 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   // data[x][y] is the block at column x and row y
   // data[width - 1][height - 1] is the top-right block
   // the first index is the column, the second index is the row
-  public data =
-    this.state.data?.map((col) =>
-      col.map((cell) => makeBlock(this.scene, cell)),
-    ) ?? Array.from({ length: this.settings.columns }, () => []);
+  public data: Block<BlockData>[][];
+
+  constructor(state: PuzzleBoardState) {
+    super(state);
+    this.data =
+      this.state.data?.map((col) =>
+        col.map((cell) => makeBlock(this.scene, cell)),
+      ) ?? Array.from({ length: this.settings.columns }, () => []);
+  }
 
   static fromSettings(
     scene: ZwapGame,
@@ -149,8 +158,6 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     this.data[x][y] = newBlock;
   }
 
-  // getBlockAt(x: Position): Block;
-  // getBlockAt(x: number, y: number): Block;
   getBlockAt({ x, y }: Position): Block {
     return this.data[x][y];
   }
@@ -268,6 +275,16 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
           _y < this.settings.rows,
       )
       .map(([_x, _y]) => this.getBlockAt({ x: _x, y: _y }));
+  }
+
+  handleBlockEvent(event: any, block: Block): void {
+    const pos = this.getPosition(block);
+    cons.log("handleBlockEvent", event, block.id, pos);
+    if (event === "click") {
+      cons.log("click", block.id, pos);
+    } else if (event === "hover") {
+      cons.log("hover", block.id, pos);
+    }
   }
 
   toString(): string {
