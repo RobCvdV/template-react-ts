@@ -7,20 +7,20 @@
 import { DateTime, ensureArray, Struct } from "@core";
 import { Turn } from "@domains";
 
-// type GameProgressState = {
-//   started?: boolean;
-//   startMoment?: DateTime;
-//   lastPlayedMoment?: DateTime;
-//   paused?: boolean;
-//   gameOver?: boolean;
-//   score?: number;
-//   level?: number;
-//   levelProgress?: number;
-//   turns?: Turn[];
-//   movesWithoutReaction?: number;
-//   // plannedBlocks?: PlannedBlock[];
-//   statistics?: Record<string, number>;
-// };
+export type GameProgressState = {
+  started?: boolean;
+  startMoment?: DateTime;
+  lastPlayedMoment?: DateTime;
+  paused?: boolean;
+  gameOver?: boolean;
+  score?: number;
+  level?: number;
+  levelProgress?: number;
+  turns?: Turn[];
+  movesWithoutReaction?: number;
+  // plannedBlocks?: PlannedBlock[];
+  statistics?: Record<string, number>;
+};
 // const defaultGameProgressState: GameProgressState = {
 //   started: false,
 //   startMoment: DateTime.now,
@@ -36,12 +36,10 @@ import { Turn } from "@domains";
 //   statistics: {},
 // };
 
-export class GameProgress extends Struct {
+export class GameProgress extends Struct<GameProgressState> {
   public started = (this.state.started as boolean) || false;
-  public startMoment = new Date(this.state.startMoment || DateTime.now);
-  public lastPlayedMoment = new DateTime(
-    this.state.lastPlayedMoment || DateTime.now,
-  );
+  public startMoment = DateTime.orNow(this.state.startMoment);
+  public lastPlayedMoment = DateTime.orNow(this.state.lastPlayedMoment);
   public paused = (this.state.paused as boolean) || true;
   public gameOver = (this.state.gameOver as boolean) || false;
   public score = (this.state.score as number) || 0;

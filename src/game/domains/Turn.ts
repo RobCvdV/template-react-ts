@@ -1,6 +1,5 @@
-import { assertDefined, Child, ensureArray } from "@core";
-import { Block, BlockSet } from "@domains";
-import { MatchInfo } from "@/reactState";
+import { assertDefined, Child, ensureArray, Struct } from "@core";
+import { Block, BlockSet, MatchInfo } from "@domains";
 
 export class ChainReaction extends Child {
   // readonly type: ReactionType
@@ -8,7 +7,7 @@ export class ChainReaction extends Child {
   readonly addedBlocks = ensureArray(Block, this.state.addedBlocks);
 }
 
-export class Turn extends Child {
+export class Turn extends Struct {
   public isDone = false;
   public match: MatchInfo = this.state.match as MatchInfo;
   public chainReactions: ChainReaction[] = ensureArray(

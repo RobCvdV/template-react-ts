@@ -1,6 +1,6 @@
 import { AnyObject, cons, getUuid, Id } from "@core";
 import { GameObjectStruct, SpriteData } from "@/game/core/GameObjectStruct.ts";
-import { BlockType, ZwapGame } from "@game";
+import { BlockType, GameSettings, GameTheme, ZwapGame } from "@game";
 import Color = Phaser.Display.Color;
 import Sprite = Phaser.GameObjects.Sprite;
 import Tween = Phaser.Tweens.Tween;
@@ -13,6 +13,8 @@ export type BlockData = SpriteData & {
   isSelected?: boolean;
   isMatchable?: boolean;
   isMatched?: boolean;
+
+  settings: GameSettings;
 };
 
 // the BLockSprite class is a GameObject that represents a block in the game
@@ -53,40 +55,37 @@ export class Block<
   //   });
   // }
 
-  static create<T extends BlockData = BlockData>(scene: ZwapGame, block: T) {
-    const bType: BlockType = scene.settings.theme.shapes[block.type];
-    const bColor: Color = Color.RGBStringToColor(
-      scene.settings.theme.colors[block.color],
-    );
-    // cons.log("Construct Block", block, bType?.blockAsset, bColor?.phaser.color);
-
-    const bl = new Block(scene, block, block.x, block.y, bType.blockAsset);
-    bl.bType = bType;
-    bl.bColor = bColor;
-    bl.addToUpdateList();
-    bl.setTint(bColor.color);
-    bl.setOrigin(0.5, 0.5);
-    bl.setDepth(100);
+  constructor(scene: ZwapGame, block: T) {
+    const typeNr = block.type ?? 0;
+    const texture = scene.settings.theme.shapes[typeNr].blockAsset;
+    super(scene, { ...block, texture });
+    this.setDataEnabled();
+    this.setData(block);
+    this.addToUpdateList();
+    this.name = block.id ?? getUuid();
+    this.type = this.constructor.name;
+    this.set("type", typeNr);
+    this.changeColor(block.color);
+    this.setDepth(100);
 
     if (block.isSelected) {
-      bl.setSelected(true);
+      this.setSelected(true);
     }
 
-    bl.setInteractive({
+    this.setInteractive({
       cursor: "pointer",
-      hitArea: new Phaser.Geom.Rectangle(0, 0, bl.width, bl.height),
+      hitArea: new Phaser.Geom.Rectangle(0, 0, this.width, this.height),
       hitAreaCallback: Phaser.Geom.Rectangle.Contains,
     });
 
-    bl.on("pointerup", () => {
-      cons.log("click", bl.getData("isSelected"));
-      bl.setSelected(!bl.getData("isSelected"));
+    this.on("pointerup", () => {
+      cons.log("click", this.getData("isSelected"));
+      this.setSelected(!this.getData("isSelected"));
     });
-    return bl;
   }
 
   changeColor(colorNr: number): this {
-    const { colors } = (this.scene as ZwapGame).settings.theme;
+    const { colors } = this.theme;
     cons.log("Change color", colorNr, colors[colorNr]);
     this.bColor = Color.RGBStringToColor(colors[colorNr]);
     this.setTint(this.bColor.color);
@@ -98,8 +97,16 @@ export class Block<
     return this.getData("color");
   }
 
+  get settings(): GameSettings {
+    return this.getData("settings");
+  }
+
+  get theme(): GameTheme {
+    return (this.scene as ZwapGame).settings.theme;
+  }
+
   changeType(typeNr: number): this {
-    this.setTexture(BlockType.byId<BlockType>(typeNr).blockAsset);
+    this.setTexture(this.theme.shapes[typeNr].blockAsset);
     this.set("type", typeNr);
     return this;
   }
@@ -191,22 +198,34 @@ export function makeBlock(scene: ZwapGame, state: BlockData): Block {
     case BlockType.Bomb.id:
       return Bomb.create(scene, state);
     default:
-      return Block.create(scene, state);
+      return new Block(scene, state);
   }
+}
+
+export function randomBlockData(
+  settings: GameSettings,
+  col: number,
+  row: number,
+): BlockData {
+  const x = col * settings.blockSpace + settings.blockSpace / 2;
+  const y = row * settings.blockSpace + settings.blockSpace / 2;
+  const { maxColors, maxBlockTypes } = settings;
+  return {
+    id: getUuid(),
+    color: Math.floor(Math.random() * maxColors),
+    type: Math.floor(Math.random() * maxBlockTypes),
+    x,
+    y,
+    size: { width: settings.blockSize, height: settings.blockSize },
+    settings,
+  };
 }
 
 export function makeRandomBlock(
   scene: ZwapGame,
-  maxColors: number,
-  maxBlockTypes: number,
-  row: number,
+  settings: GameSettings,
   col: number,
+  row: number,
 ): Block {
-  return makeBlock(scene, {
-    id: getUuid(),
-    color: Math.floor(Math.random() * maxColors),
-    type: Math.floor(Math.random() * maxBlockTypes),
-    x: col,
-    y: row,
-  } as BlockData);
+  return makeBlock(scene, randomBlockData(settings, col, row));
 }

@@ -1,4 +1,4 @@
-import { EventBus, GameSettings, GameTheme, PuzzleBoard, themes } from "@game";
+import { EventBus, GameTheme, PuzzleBoard, themes } from "@game";
 import { Scene } from "phaser";
 
 type GeneralSettings = {
@@ -27,14 +27,7 @@ export class ZwapGame extends Scene {
 
     this.background = this.add.image(300, 600, "background");
     this.background.setAlpha(0.5);
-
-    // this.gameText = this.add.text(512, 384, 'Make something fun!\nand share it with us:\nsupport@phaser.io', {
-    //     fontFamily: 'Arial Black', fontSize: 38, color: '#ffffff',
-    //     stroke: '#000000', strokeThickness: 8,
-    //     align: 'center'
-    // }).setOrigin(0.5).setDepth(100);
-
-    this.board = PuzzleBoard.fromSettings(GameSettings.Normal, this);
+    this.board = PuzzleBoard.fromSettings(this, "Normal");
 
     EventBus.emit("current-scene-ready", this);
   }

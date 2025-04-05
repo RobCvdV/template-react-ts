@@ -47,6 +47,10 @@ export class DateTime extends Value<Optional<string>> {
     );
   }
 
+  static orNow(value?: string | number | Date | DateTime | null): DateTime {
+    return value ? new DateTime(value) : DateTime.now;
+  }
+
   static get now(): DateTime {
     return new DateTime(LuxonDateTime.utc().toISO());
   }

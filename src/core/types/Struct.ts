@@ -1,7 +1,7 @@
-import { Json } from "@core";
+import { AnyObject, Json } from "@core";
 
-export class Struct {
-  constructor(protected readonly state: Json = {}) {}
+export class Struct<T extends AnyObject = Json> {
+  constructor(protected readonly state: T = {} as T) {}
 
   toJSON(): Json {
     const { state, ...rest } = this;
@@ -13,11 +13,11 @@ export class Struct {
   }
 
   // override this method in your own classes
-  update(_add: Json): Struct {
+  update(_add: T): this {
     return this;
   }
 
-  protected merge(a: Json): Json {
+  protected merge(a: T): T {
     return { ...this, ...a };
   }
 }

@@ -1,24 +1,46 @@
-import { Child } from "@core";
+import { Child, JsonEntity } from "@core";
 
-export class GameSettings extends Child {
-  readonly maxColors = this.state.maxColors as number;
-  readonly maxBlockTypes = this.state.maxBlockTypes as number;
-  readonly maxKeys = this.state.maxKeys as number;
-  readonly maxLocks = this.state.maxLocks as number;
-  readonly maxBombs = this.state.maxBombs as number;
-  readonly boardWidth = this.state.boardWidth as number;
-  readonly boardHeight = this.state.boardHeight as number;
-  readonly speed = this.state.speed as number;
+export type GameSettingsState = JsonEntity & {
+  maxColors: number;
+  maxBlockTypes: number;
+  maxKeys: number;
+  maxLocks: number;
+  maxBombs: number;
+  columns: number;
+  rows: number;
+  speed: number;
+  width: number;
+};
 
-  static Normal = new GameSettings({
-    id: "normal",
-    maxColors: 6,
-    maxBlockTypes: 6,
-    maxKeys: 3,
-    maxLocks: 3,
-    maxBombs: 3,
-    boardWidth: 8,
-    boardHeight: 12,
-    speed: 1,
-  });
+export class GameSettings extends Child<GameSettingsState> {
+  readonly id = this.state.id as string;
+  readonly maxColors = this.state.maxColors;
+  readonly maxBlockTypes = this.state.maxBlockTypes;
+  readonly maxKeys = this.state.maxKeys;
+  readonly maxLocks = this.state.maxLocks;
+  readonly maxBombs = this.state.maxBombs;
+  readonly columns = this.state.columns;
+  readonly rows = this.state.rows;
+  readonly speed = this.state.speed;
+  readonly width = this.state.width;
+  readonly blockSpace = this.width / this.columns;
+  readonly blockSize = this.blockSpace * 0.8;
+  readonly height = this.blockSpace * this.rows;
+
+  static Normal(screenWidth: number): GameSettings {
+    return new GameSettings({
+      id: "normal",
+      maxColors: 6,
+      maxBlockTypes: 6,
+      maxKeys: 3,
+      maxLocks: 3,
+      maxBombs: 3,
+      columns: 8,
+      rows: 12,
+      speed: 1,
+      width: screenWidth,
+    });
+  }
 }
+
+export type GameSettingsKey = keyof Omit<typeof GameSettings, "prototype">;

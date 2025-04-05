@@ -1,44 +1,43 @@
 import { forEach } from "lodash";
-import {
-  ensure,
-  getNamedLogs,
-  getUuid,
-  Id,
-  Json,
-  Position,
-  Struct,
-} from "@core";
+import { ensure, getNamedLogs, getUuid, Id, Position, Struct } from "@core";
 import {
   Block,
   BlockData,
   BlockSet,
+  GameProgress,
+  GameProgressState,
   GameSettings,
+  GameSettingsKey,
+  GameSettingsState,
   makeBlock,
   makeRandomBlock,
   MatchInfo,
+  randomBlockData,
   Selection,
 } from "@domains";
 import { ZwapGame } from "@/game";
 
-type PuzzleBoardState = {
+export type PuzzleBoardState = {
   id?: Id;
-  width: number;
-  height: number;
-  data: (Json | Block)[][];
-  settings: Json | GameSettings;
+  data: (BlockData | Block)[][];
+  settings: GameSettingsState | GameSettings;
+  scene: ZwapGame;
+  progress?: GameProgressState | GameProgress;
 };
 
 const cons = getNamedLogs({ name: "PuzzleBoard" });
-export class PuzzleBoard extends Struct {
-  readonly id: Id = this.state.id || getUuid();
-  readonly width = this.state.width as number;
-  readonly height = this.state.height as number;
+export class PuzzleBoard extends Struct<PuzzleBoardState> {
+  readonly id: Id = this.state.id ?? getUuid();
+  readonly progress = ensure(GameProgress, this.state.progress, {});
+  readonly settings = ensure(GameSettings, this.state.settings, {});
+  readonly scene = this.state.scene;
+
   // data is a 2D array of Blocks, representing the board
   // data[0][0] is the bottom-left block
   // data[x][y] is the block at column x and row y
   // data[width - 1][height - 1] is the top-right block
   // the first index is the column, the second index is the row
-  public data = (this.state.data as (Block | BlockData)[][]).map((row) =>
+  public data = this.state.data.map((row) =>
     row.map((cell) => {
       if (cell instanceof Block) {
         return cell;
@@ -47,39 +46,20 @@ export class PuzzleBoard extends Struct {
     }),
   );
 
-  readonly settings = ensure(
-    GameSettings,
-    this.state.settings,
-    GameSettings.Normal,
-  );
-
-  constructor(
-    data: PuzzleBoardState,
-    readonly scene: ZwapGame,
-  ) {
-    super(data);
-  }
-
-  static fromSettings(settings: GameSettings, scene: ZwapGame): PuzzleBoard {
-    return new PuzzleBoard(
-      {
-        settings: settings,
-        width: settings.boardWidth,
-        height: settings.boardHeight,
-        data: Array.from({ length: settings.boardWidth }, (_, c) =>
-          Array.from({ length: settings.boardHeight }, (__, r) =>
-            makeRandomBlock(
-              scene,
-              settings.maxColors,
-              settings.maxBlockTypes,
-              r,
-              c,
-            ),
-          ),
-        ),
-      },
+  static fromSettings(
+    scene: ZwapGame,
+    mode: GameSettingsKey = "Normal",
+  ): PuzzleBoard {
+    const settings = GameSettings[mode](scene.settings.screenWidth);
+    return new PuzzleBoard({
+      settings,
       scene,
-    ).unchainByRecoloringBlocks();
+      data: Array.from({ length: settings.columns }, (_, c) =>
+        Array.from({ length: settings.rows }, (__, r) =>
+          randomBlockData(settings, c, r),
+        ),
+      ),
+    }).unchainByRecoloringBlocks();
   }
 
   get count(): number {
@@ -90,9 +70,10 @@ export class PuzzleBoard extends Struct {
     return this.count === 0;
   }
 
+  // getPosition returns the column, row of the block
   getPosition(block: Block): [number, number] {
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
+    for (let x = 0; x < this.settings.columns; x++) {
+      for (let y = 0; y < this.settings.rows; y++) {
         if (this.data[x][y]?.id === block?.id) {
           return [x, y];
         }
@@ -138,16 +119,10 @@ export class PuzzleBoard extends Struct {
     cons.log("addBlocksToFillOnTop...");
     const newBlocks = this.data
       .map((col, c) => {
-        const count = this.settings.boardHeight - col.length;
+        const count = this.settings.rows - col.length;
         // cons.log(count, ' blocks in col:', x);
         const nbs = Array.from({ length: count }, (__, r) =>
-          makeRandomBlock(
-            this.scene,
-            this.settings.maxColors,
-            this.settings.maxBlockTypes,
-            r,
-            c,
-          ),
+          makeRandomBlock(this.scene, this.settings, c, r),
         );
         col.push(...nbs);
         return nbs;
@@ -201,7 +176,12 @@ export class PuzzleBoard extends Struct {
     const set = new BlockSet([block]);
     const visited = new Set<string>();
     const visit = (x: number, y: number) => {
-      if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
+      if (
+        x < 0 ||
+        x >= this.settings.columns ||
+        y < 0 ||
+        y >= this.settings.rows
+      ) {
         return;
       }
       if (visited.has(`${x},${y}`)) {
@@ -288,7 +268,11 @@ export class PuzzleBoard extends Struct {
     ];
     return surrounding
       .filter(
-        ([_x, _y]) => _x >= 0 && _x < this.width && _y >= 0 && _y < this.height,
+        ([_x, _y]) =>
+          _x >= 0 &&
+          _x < this.settings.columns &&
+          _y >= 0 &&
+          _y < this.settings.rows,
       )
       .map(([_x, _y]) => this.getBlockAt({ x: _x, y: _y }));
   }
@@ -297,15 +281,5 @@ export class PuzzleBoard extends Struct {
     return this.data
       .map((row) => row.map((b) => b.toString()).join(""))
       .join("\n");
-  }
-}
-
-class SetResult {
-  set: BlockSet;
-  blocksToDestroy: Block[] = [];
-  newBlocks: Block[] = [];
-
-  constructor(set: BlockSet) {
-    this.set = set;
   }
 }

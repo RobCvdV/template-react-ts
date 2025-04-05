@@ -1,5 +1,5 @@
 import { GameObjects } from "phaser";
-import { assertDefined, getNamedLogs, getUuid, Json } from "@core";
+import { assertDefined, getNamedLogs, getUuid, JsonEntity, Size } from "@core";
 
 /**
  * @typedef {Object} SpriteData
@@ -7,11 +7,11 @@ import { assertDefined, getNamedLogs, getUuid, Json } from "@core";
  * @property {number} [y] - The y-coordinate of the sprite.
  * @property {string} [texture] - The texture key of the sprite.
  */
-export type SpriteData = Json & {
-  id: string;
-  x?: number;
-  y?: number;
+export type SpriteData = JsonEntity<string> & {
+  x: number;
+  y: number;
   texture?: string;
+  size?: Size;
 };
 
 const cons = getNamedLogs({ name: "GameObjectStruct" });
@@ -30,32 +30,18 @@ export class GameObjectStruct<
    *
    * @param {Phaser.Scene} scene - The scene to which this sprite belongs.
    * @param {T} data - The data object containing properties for the sprite.
-   * @param {number} [x] - The x-coordinate of the sprite.
-   * @param {number} [y] - The y-coordinate of the sprite.
-   * @param {string} [texture] - The texture key of the sprite.
    */
-  constructor(
-    scene: Phaser.Scene,
-    data: T,
-    x?: number,
-    y?: number,
-    texture?: string,
-  ) {
-    const _x = (x ?? data.x ?? 1) * 60 + 50;
-    const _y = (y ?? data.y ?? 1) * 60 + 50;
-    texture = texture ?? data.texture;
-    // assertDefined(x, "x@GameObjectStruct");
-    // assertDefined(y, "y@GameObjectStruct");
-    assertDefined(texture, "texture@GameObjectStruct");
+  constructor(scene: Phaser.Scene, data: T) {
+    assertDefined(data.texture, "texture@GameObjectStruct");
 
-    super(scene, _x, _y, texture);
+    super(scene, data.x, data.y, data.texture);
     this.setDataEnabled();
     this.data.set(data);
     this.name = data.id ?? getUuid();
     this.type = this.constructor.name;
-    this.setDisplaySize(50, 50);
-    // adjust scale to fit the scene width, assuming the blocks are square and 100x100 by default
-    // adjust scale to fit the scene width, assuming the blocks are square and 100x100 by default
+    if (data.size) {
+      this.setDisplaySize(data.size.width, data.size.height);
+    }
     scene.add.existing(this);
     this.addToUpdateList();
   }
