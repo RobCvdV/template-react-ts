@@ -7,7 +7,11 @@ export class BlockSet {
   ) {}
 
   toString(): string {
-    return this.blocks.map((b) => b.toString()).join("");
+    return "[" + this.blocks.map((b) => b.toString()).join("") + "]";
+  }
+
+  toLog() {
+    return ["[", ...this.blocks.map((b) => b.toLog()), "]"];
   }
 
   addToSet(block: Block): BlockSet {
@@ -37,7 +41,7 @@ export class BlockSet {
   }
 
   get bombs(): Bomb[] {
-    return this.blocks.filter((b) => b.type.isBomb) as Bomb[];
+    return this.blocks.filter((b) => b.bType.isBomb) as Bomb[];
   }
 
   get isPureType(): boolean {
@@ -45,10 +49,10 @@ export class BlockSet {
   }
 
   get containsLock(): boolean {
-    return this.blocks.some((b) => b.type.isLock);
+    return this.blocks.some((b) => b.bType.isLock);
   }
 
   get containsKey(): boolean {
-    return this.blocks.some((b) => b.type.isKey);
+    return this.blocks.some((b) => b.bType.isKey);
   }
 }

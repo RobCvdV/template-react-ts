@@ -85,18 +85,6 @@ export const cons = logCommands.reduce<SmartConsole>(
   {} as unknown as SmartConsole,
 );
 
-// export const injectCons = logCommands.reduce<InjectedConsole<'log'>>(
-//   (obj, cmd) => {
-//     obj[cmd] = ((tag, ...args) =>
-//       <T>(x: T) => {
-//         cons[cmd](tag, ...args, x);
-//         return x;
-//       }) as InjectedLogger<C>;
-//     return obj;
-//   },
-//   {} as unknown as InjectedConsole,
-// );
-
 type LogOptions = {
   name: string;
   color: LogColor;
@@ -106,6 +94,20 @@ type LogOptions = {
 export type ConsLogger = Console<Logger<LogArgs>> & {
   i: Console<Logger<LogArgs, Injector>>;
 };
+
+function styledArgs(...args: any[]): { format: string; styles: string[] } {
+  const styles = [] as string[];
+  const format = args
+    .map((arg) => {
+      if (typeof arg === "object" && arg.style && arg.text) {
+        styles.push(arg.style, "");
+        return `%c${arg.text}%c`;
+      }
+      return `${arg}`;
+    })
+    .join(" ");
+  return { format, styles };
+}
 
 function logNamed(
   cmd: LogCommand,
@@ -127,12 +129,18 @@ function logNamed(
     : "";
   if (args.length === 1 && typeof args[0] === "function") {
     return cons[cmd](
-      stamp + prefix + col + tag,
-      `${logColors.reset}`,
+      stamp + prefix + "%c" + tag + "%c",
+      `color: ${col}; font-weight: bold;`,
       args[0](),
     );
   }
-  return cons[cmd](stamp + prefix + col + tag, `${logColors.reset}`, ...args);
+  const { format, styles } = styledArgs(...args);
+  return cons[cmd](
+    stamp + prefix + "%c" + tag + "%c " + format,
+    `color: ${col}; font-weight: bold;`,
+    "",
+    ...styles,
+  );
 }
 
 export const getLogColor = (tag: string): LogColor =>
@@ -148,19 +156,6 @@ export const getLogColor = (tag: string): LogColor =>
             ? "magenta"
             : "green";
 
-type ColorFunction = (input: any) => string;
-type ColorFunctions = {
-  [key in LogColor]: ColorFunction;
-};
-export const colorize: ColorFunctions = Object.entries(logColors).reduce(
-  (acc, [colorKey, colorValue]) => {
-    acc[colorKey as LogColor] = (input: any) =>
-      `${colorValue}${input}${logColors.reset}`;
-    return acc;
-  },
-  {} as unknown as ColorFunctions,
-);
-
 export const getNamedLogs = (options?: Partial<LogOptions>): ConsLogger => {
   const color = options?.color ?? getLogColor(options?.name || "");
   const settings = {
@@ -169,7 +164,8 @@ export const getNamedLogs = (options?: Partial<LogOptions>): ConsLogger => {
     addTimestamp: true,
     ...options,
   } as LogOptions;
-  const col = logColors[color];
+  // const col = logColors[color];
+  const col = color;
 
   const cons = {
     settings: settings,

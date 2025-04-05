@@ -24,6 +24,7 @@ const cons = getNamedLogs({ name: "GameObjectStruct" });
  */
 export class GameObjectStruct<
   T extends SpriteData = SpriteData,
+  S extends Phaser.Scene = Phaser.Scene,
 > extends GameObjects.Sprite {
   /**
    * Creates an instance of GameObjectStruct.
@@ -31,7 +32,7 @@ export class GameObjectStruct<
    * @param {Phaser.Scene} scene - The scene to which this sprite belongs.
    * @param {T} data - The data object containing properties for the sprite.
    */
-  constructor(scene: Phaser.Scene, data: T) {
+  constructor(scene: S, data: T) {
     assertDefined(data.texture, "texture@GameObjectStruct");
 
     super(scene, data.x, data.y, data.texture);

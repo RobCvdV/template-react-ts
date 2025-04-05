@@ -1,6 +1,12 @@
-import { AnyObject, cons, getUuid, Id } from "@core";
+import { AnyObject, getUuid, logColors } from "@core";
 import { GameObjectStruct, SpriteData } from "@/game/core/GameObjectStruct.ts";
-import { BlockType, GameSettings, GameTheme, ZwapGame } from "@game";
+import {
+  BlockColor,
+  BlockType,
+  GameSettings,
+  GameTheme,
+  ZwapGame,
+} from "@game";
 import Color = Phaser.Display.Color;
 import Sprite = Phaser.GameObjects.Sprite;
 import Tween = Phaser.Tweens.Tween;
@@ -15,39 +21,30 @@ export type BlockData = SpriteData & {
   isMatched?: boolean;
 
   settings: GameSettings;
-  handleEvent?: (event: string, data: AnyObject) => void;
 };
 
-export interface BlockDelegate {
-  onBlockDown?: (block: Block) => void;
-  onBlockUp?: (block: Block) => void;
-  onBlockHover?: (block: Block) => void;
-  onBlockOut?: (block: Block) => void;
-  onBlockDragStart?: (block: Block) => void;
-  onBlockDragEnd?: (block: Block) => void;
-}
-
 // the BLockSprite class is a GameObject that represents a block in the game
-export class Block<
-  T extends BlockData = BlockData,
-> extends GameObjectStruct<T> {
+export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
+  T,
+  ZwapGame
+> {
   private tween: Tween | undefined;
-  private delegate?: BlockDelegate;
   public bType: BlockType;
-  public bColor: Color;
+  public color: Color;
+  public bColor: BlockColor;
   protected effects: AnyObject<Sprite | Tween | ParticleEmitter> = {};
+  readonly container: Phaser.GameObjects.Container;
 
-  constructor(scene: ZwapGame, block: T, delegate?: BlockDelegate) {
+  constructor(scene: ZwapGame, block: T) {
     const typeNr = block.type ?? 0;
     const texture = scene.settings.theme.shapes[typeNr].blockAsset;
     super(scene, { ...block, texture });
-    this.delegate = delegate;
     this.setDataEnabled();
     this.setData(block);
     this.addToUpdateList();
     this.name = block.id ?? getUuid();
     this.type = this.constructor.name;
-    this.set("type", typeNr);
+    this.bType = scene.settings.theme.shapes[typeNr];
     this.changeColor(block.color);
     this.setDepth(1);
 
@@ -55,37 +52,29 @@ export class Block<
       this.setSelected(true);
     }
 
-    this.setInteractive({
-      cursor: "pointer",
-      hitArea: new Phaser.Geom.Rectangle(0, 0, this.width, this.height),
-      hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-    });
-
-    this.on("pointerdown", (event: PointerEvent) => {
-      event.stopPropagation();
-      this.delegate?.onBlockDown?.(this);
-    });
-    this.on("pointerover", (event: PointerEvent) => {
-      event.stopPropagation();
-      this.delegate?.onBlockHover?.(this);
-    });
+    // this.setInteractive({
+    //   cursor: "pointer",
+    //   hitArea: new Phaser.Geom.Rectangle(0, 0, this.width, this.height),
+    //   hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+    // });
   }
 
   changeColor(colorNr: number): this {
     const { colors } = this.theme;
-    cons.log("Change color", colorNr, colors[colorNr]);
-    this.bColor = Color.RGBStringToColor(colors[colorNr]);
-    this.setTint(this.bColor.color);
+    // cons.log("Change color", colorNr, colors[colorNr]);
+    this.color = Color.RGBStringToColor(colors[colorNr]);
+    this.bColor = BlockColor.byId<BlockColor>(colorNr);
+    this.setTint(this.color.color);
     this.set("color", colorNr);
     return this;
   }
 
   get colorIndex(): number {
-    return this.getData("color");
+    return this.get("color");
   }
 
   get settings(): GameSettings {
-    return this.getData("settings");
+    return this.get("settings");
   }
 
   get theme(): GameTheme {
@@ -117,6 +106,17 @@ export class Block<
     this.setSelected(selected);
   }
 
+  toString(): string {
+    return `${logColors.encircled}${logColors.bold}${this.bColor.fg} ${this.bType.code} ${logColors.reset}`;
+  }
+
+  toLog(): { text: string; style: string } {
+    return {
+      text: `${this.bType.code}`,
+      style: `color: ${this.bColor.code}; background-color: #333; border-radius: 3px; padding: 0px 4px; font-size: 16px; margin: 2px;`,
+    };
+  }
+
   setSelected(selected: boolean): this {
     this.set("isSelected", selected);
     if (selected) {
@@ -127,8 +127,8 @@ export class Block<
         .setScale(this.scale * 1.1)
         .setDepth(2);
       this.effects.border = border;
-      const startColor = this.bColor.clone().darken(10);
-      const endColor = this.bColor.clone().brighten(30);
+      const startColor = this.color.clone().darken(10);
+      const endColor = this.color.clone().brighten(30);
       this.tween = this.scene.tweens.addCounter({
         from: 0,
         to: 100,
@@ -157,8 +157,8 @@ export class Block<
   }
 
   fallToRow(row: number): this {
-    const { halfSpace, rows, blockSpace } = this.settings;
-    const reverseY = rows - row;
+    const { halfSpace, rows, blockSpace, offsetY } = this.settings;
+    const reverseY = rows - row - 1;
     this.scene.tweens.add({
       targets: this,
       y: reverseY * blockSpace + halfSpace,
@@ -168,7 +168,7 @@ export class Block<
       onComplete: () => {
         if (row === 0) {
           this.scene.add
-            .particles(this.x, this.y + halfSpace, "cloud", {
+            .particles(this.x, this.y + halfSpace + offsetY, "cloud", {
               blendMode: "ADD",
               duration: 1,
               quantity: 10,
@@ -188,83 +188,4 @@ export class Block<
     });
     return this;
   }
-}
-
-export type BombData = BlockData & {
-  counter?: number;
-};
-// @ts-ignore
-export class Bomb extends Block<BombData> {
-  setCounter(counter: number): this {
-    this.set("counter", counter);
-    return this;
-  }
-
-  decrementCounter(): this {
-    const counter = this.get("counter") ?? 0;
-    this.set("counter", counter - 1);
-    return this;
-  }
-
-  explode(): this {
-    this.set("isExploded", true);
-    this.setSelected(false);
-    this.effects["explosion"] = this.scene.add.particles(
-      this.x,
-      this.y,
-      "star",
-      {
-        speed: { min: -100, max: 100 },
-        lifespan: { min: 1000, max: 2000 },
-        quantity: 20,
-        scale: { start: 0.5, end: 0 },
-        blendMode: "ADD",
-        color: [0xffff99, 0xffaa00, 0x0000],
-      },
-    );
-    this.destroy();
-    return this;
-  }
-}
-
-export function makeBlock(
-  scene: ZwapGame,
-  state: BlockData,
-  delegate?: BlockDelegate,
-): Block {
-  switch (state.type as Id) {
-    case BlockType.Bomb.id:
-      return new Bomb(scene, state, delegate);
-    default:
-      return new Block(scene, state, delegate);
-  }
-}
-
-export function randomBlockData(
-  settings: GameSettings,
-  col: number,
-  row: number,
-): BlockData {
-  const x = col * settings.blockSpace + settings.blockSpace / 2;
-  const y = row * settings.blockSpace + settings.blockSpace / 2;
-  const { maxColors, maxBlockTypes } = settings;
-  return {
-    id: getUuid(),
-    color: Math.floor(Math.random() * maxColors),
-    type: Math.floor(Math.random() * maxBlockTypes),
-    x,
-    y,
-    size: { width: settings.blockSize, height: settings.blockSize },
-    settings,
-  };
-}
-
-export function makeRandomBlock(
-  scene: ZwapGame,
-  settings: GameSettings,
-  col: number,
-  row: number,
-  delegate?: BlockDelegate,
-): Block {
-  return makeBlock(scene, randomBlockData(settings, col, row), delegate);
 }

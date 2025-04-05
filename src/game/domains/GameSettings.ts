@@ -10,6 +10,8 @@ export type GameSettingsState = JsonEntity & {
   rows: number;
   speed: number;
   width: number;
+  screenWidth: number;
+  screenHeight: number;
 };
 
 export class GameSettings extends Child<GameSettingsState> {
@@ -27,8 +29,14 @@ export class GameSettings extends Child<GameSettingsState> {
   readonly halfSpace = this.blockSpace / 2;
   readonly blockSize = this.blockSpace * 0.9;
   readonly height = this.blockSpace * this.rows;
+  readonly screenWidth = this.state.screenWidth;
+  readonly screenHeight = this.state.screenHeight;
+  readonly offsetY: number = this.screenHeight - this.height;
 
-  static Normal(screenWidth: number): GameSettings {
+  static Normal(gs: {
+    screenWidth: number;
+    screenHeight: number;
+  }): GameSettings {
     return new GameSettings({
       id: "normal",
       maxColors: 6,
@@ -39,7 +47,8 @@ export class GameSettings extends Child<GameSettingsState> {
       columns: 8,
       rows: 12,
       speed: 1,
-      width: screenWidth,
+      width: gs.screenWidth,
+      ...gs,
     });
   }
 }

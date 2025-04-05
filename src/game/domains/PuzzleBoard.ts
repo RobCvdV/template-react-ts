@@ -3,7 +3,6 @@ import { ensure, getNamedLogs, getUuid, Id, Position, Struct } from "@core";
 import {
   Block,
   BlockData,
-  BlockDelegate,
   BlockSet,
   GameProgress,
   GameProgressState,
@@ -16,6 +15,7 @@ import {
   Selection,
 } from "@domains";
 import { ZwapGame } from "@/game";
+import Container = Phaser.GameObjects.Container;
 
 export type PuzzleBoardState = {
   id?: Id;
@@ -26,14 +26,12 @@ export type PuzzleBoardState = {
 };
 
 const cons = getNamedLogs({ name: "PuzzleBoard" });
-export class PuzzleBoard
-  extends Struct<PuzzleBoardState>
-  implements BlockDelegate
-{
+export class PuzzleBoard extends Struct<PuzzleBoardState> {
   readonly id: Id = this.state.id ?? getUuid();
   readonly progress = ensure(GameProgress, this.state.progress, {});
   readonly settings = ensure(GameSettings, this.state.settings, {});
   readonly scene = this.state.scene;
+  readonly blocks: Container;
 
   // data is a 2D array of Blocks, representing the board
   // data[0][0] is the bottom-left block
@@ -44,17 +42,22 @@ export class PuzzleBoard
 
   constructor(state: PuzzleBoardState) {
     super(state);
+    this.blocks = this.scene.add
+      .container(0, state.settings.offsetY)
+      .setSize(state.settings.width, state.settings.height);
     this.data =
       this.state.data?.map((col) =>
-        col.map((cell) => makeBlock(this.scene, cell)),
+        col.map((cell) => makeBlock(this.scene, cell, this.blocks)),
       ) ?? Array.from({ length: this.settings.columns }, () => []);
+
+    this.initListeners();
   }
 
   static fromSettings(
     scene: ZwapGame,
     mode: GameSettingsKey = "Normal",
   ): PuzzleBoard {
-    const settings = GameSettings[mode](scene.settings.screenWidth);
+    const settings = GameSettings[mode](scene.settings);
     const pb = new PuzzleBoard({
       settings,
       scene,
@@ -123,17 +126,20 @@ export class PuzzleBoard
       .map((col, c) => {
         const count = this.settings.rows - col.length;
         const nbs = Array.from({ length: count }, (__, r) =>
-          makeRandomBlock(this.scene, this.settings, c, -5).fallToRow(r),
+          makeRandomBlock(
+            this.scene,
+            this.settings,
+            c,
+            -5,
+            this.blocks,
+          ).fallToRow(r),
         );
         col.push(...nbs);
         return nbs;
       })
       .flat();
 
-    cons.log(
-      "addBlocksToFillOnTop",
-      newBlocks.map((b) => b.toString()).join(""),
-    );
+    cons.log("addBlocksToFillOnTop", ...newBlocks.map((b) => b.toLog()));
     this.unchainByRecoloringBlocks(newBlocks);
     cons.log("addBlocksToFillOnTop count", newBlocks.length);
     return newBlocks;
@@ -236,7 +242,7 @@ export class PuzzleBoard
   private _unchainByRecoloringBlocks(blocks: Block[]): boolean {
     // first get all the sets where one of the blocks is in
     const sets = this.getBlockSets(blocks);
-    cons.log("sets", sets.map((c) => c.toString()).join("\n"));
+    cons.log("sets", ...sets.flatMap((c) => c.toLog()));
 
     // then recolor as little blocks as possible to break the sets
     forEach(sets, (set) => {
@@ -291,5 +297,21 @@ export class PuzzleBoard
     return this.data
       .map((row) => row.map((b) => b.toString()).join(""))
       .join("\n");
+  }
+
+  private initListeners() {
+    this.blocks.setInteractive(
+      new Phaser.Geom.Rectangle(
+        0,
+        this.settings.offsetY,
+        this.settings.width,
+        this.settings.height,
+      ),
+      Phaser.Geom.Rectangle.Contains,
+    );
+
+    this.blocks.on("pointerdown", this.handleBlockEvent.bind(this));
+    this.blocks.on("pointerup", this.handleBlockEvent.bind(this));
+    this.blocks.on("pointermove", this.handleBlockEvent.bind(this));
   }
 }
