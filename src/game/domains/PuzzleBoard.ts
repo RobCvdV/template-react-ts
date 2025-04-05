@@ -37,8 +37,8 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   // data[x][y] is the block at column x and row y
   // data[width - 1][height - 1] is the top-right block
   // the first index is the column, the second index is the row
-  public data = this.state.data.map((row) =>
-    row.map((cell) => {
+  public data = this.state.data.map((col) =>
+    col.map((cell) => {
       if (cell instanceof Block) {
         return cell;
       }
@@ -51,15 +51,17 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     mode: GameSettingsKey = "Normal",
   ): PuzzleBoard {
     const settings = GameSettings[mode](scene.settings.screenWidth);
-    return new PuzzleBoard({
+    const pb = new PuzzleBoard({
       settings,
       scene,
       data: Array.from({ length: settings.columns }, (_, c) =>
-        Array.from({ length: settings.rows }, (__, r) =>
-          randomBlockData(settings, c, r),
+        Array.from({ length: settings.rows }, (__) =>
+          randomBlockData(settings, c, -5),
         ),
       ),
     }).unchainByRecoloringBlocks();
+    pb.data.forEach((col) => col.forEach((b, r) => b.fallToRow(r)));
+    return pb;
   }
 
   get count(): number {
@@ -122,12 +124,13 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
         const count = this.settings.rows - col.length;
         // cons.log(count, ' blocks in col:', x);
         const nbs = Array.from({ length: count }, (__, r) =>
-          makeRandomBlock(this.scene, this.settings, c, r),
+          makeRandomBlock(this.scene, this.settings, c, -5).fallToRow(r),
         );
         col.push(...nbs);
         return nbs;
       })
       .flat();
+
     cons.log(
       "addBlocksToFillOnTop",
       newBlocks.map((b) => b.toString()).join(""),

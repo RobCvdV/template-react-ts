@@ -139,6 +139,21 @@ export class Block<
     }
     return this;
   }
+
+  fallToRow(row: number): this {
+    const reverseY = this.settings.rows - row;
+    this.effects.fall = this.scene.tweens.add({
+      targets: this,
+      y: row * this.settings.blockSpace + this.settings.blockSpace / 2,
+      duration: 300,
+      ease: "Sine.easeIn",
+      delay: reverseY * 50 + Math.random() * 20,
+      onComplete: () => {
+        delete this.effects.fall;
+      },
+    });
+    return this;
+  }
 }
 
 export type BombData = BlockData & {
