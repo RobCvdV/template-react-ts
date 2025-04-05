@@ -26,35 +26,6 @@ export class Block<
   public bColor: Color;
   protected effects: AnyObject<Sprite | Tween | ParticleEmitter> = {};
 
-  // constructor(
-  //   scene: Phaser.Scene,
-  //   block: BlockData,
-  //   public bType: BlockType = BlockType.byId<BlockType>(block.type),
-  //   public bColor: BlockColor = BlockColor.byId<BlockColor>(block.color),
-  // ) {
-  //   cons.log("Construct Block", block, bType?.blockAsset, bColor?.phaser.color);
-  //   super(scene, block, block.x, block.y, bType.blockAsset);
-  //   this.addToUpdateList();
-  //   this.setTint(this.bColor.phaser.color).setOrigin(0.5, 0.5);
-  //   this.bColor = BlockColor.byId<BlockColor>(block.color);
-  //   this.bType = BlockType.byId<BlockType>(block.type);
-  //
-  //   if (block.isSelected) {
-  //     this.setSelected(true);
-  //   }
-  //
-  //   this.setInteractive({
-  //     cursor: "pointer",
-  //     hitArea: new Phaser.Geom.Rectangle(0, 0, this.width, this.height),
-  //     hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-  //   });
-  //
-  //   this.on("pointerup", () => {
-  //     cons.log("click", this.getData("isSelected"));
-  //     this.setSelected(!this.getData("isSelected"));
-  //   });
-  // }
-
   constructor(scene: ZwapGame, block: T) {
     const typeNr = block.type ?? 0;
     const texture = scene.settings.theme.shapes[typeNr].blockAsset;
@@ -170,25 +141,39 @@ export class Block<
   }
 }
 
-export type BombData = Omit<BlockData, "type"> & {
+export type BombData = BlockData & {
   counter?: number;
 };
 // @ts-ignore
 export class Bomb extends Block<BombData> {
-  readonly counter: number;
-
-  static create(scene: ZwapGame, data: BombData): Bomb {
-    const bl = new Bomb(scene, {
-      ...data,
-      type: 11,
-      counter: data.counter ?? 10,
-    });
-    bl.setCounter(data.counter ?? 10);
-    return bl;
+  setCounter(counter: number): this {
+    this.set("counter", counter);
+    return this;
   }
 
-  setCounter(counter: number): this {
-    this.data.set("counter", counter);
+  decrementCounter(): this {
+    const counter = this.get("counter") ?? 0;
+    this.set("counter", counter - 1);
+    return this;
+  }
+
+  explode(): this {
+    this.set("isExploded", true);
+    this.setSelected(false);
+    this.effects["explosion"] = this.scene.add.particles(
+      this.x,
+      this.y,
+      "star",
+      {
+        speed: { min: -100, max: 100 },
+        lifespan: { min: 1000, max: 2000 },
+        quantity: 20,
+        scale: { start: 0.5, end: 0 },
+        blendMode: "ADD",
+        color: [0xffff99, 0xffaa00, 0x0000],
+      },
+    );
+    this.destroy();
     return this;
   }
 }
@@ -196,7 +181,7 @@ export class Bomb extends Block<BombData> {
 export function makeBlock(scene: ZwapGame, state: BlockData): Block {
   switch (state.type as Id) {
     case BlockType.Bomb.id:
-      return Bomb.create(scene, state);
+      return new Bomb(scene, state);
     default:
       return new Block(scene, state);
   }
