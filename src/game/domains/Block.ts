@@ -143,14 +143,13 @@ export class Block<
   fallToRow(row: number): this {
     const { halfSpace, rows, blockSpace } = this.settings;
     const reverseY = rows - row;
-    this.effects.fall = this.scene.tweens.add({
+    this.scene.tweens.add({
       targets: this,
       y: reverseY * blockSpace + halfSpace,
       duration: 300,
       ease: Phaser.Math.Easing.Sine.In,
       delay: row * 100 + Math.random() * 90,
       onComplete: () => {
-        delete this.effects.fall;
         if (row === 0) {
           this.scene.add.particles(this.x, this.y + halfSpace, "circle", {
             speedY: { min: -20, max: 20 },
