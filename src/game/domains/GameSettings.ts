@@ -24,6 +24,7 @@ export class GameSettings extends Child<GameSettingsState> {
   readonly speed = this.state.speed;
   readonly width = this.state.width;
   readonly blockSpace = this.width / this.columns;
+  readonly halfSpace = this.blockSpace / 2;
   readonly blockSize = this.blockSpace * 0.9;
   readonly height = this.blockSpace * this.rows;
 

@@ -141,15 +141,29 @@ export class Block<
   }
 
   fallToRow(row: number): this {
-    const reverseY = this.settings.rows - row;
+    const { halfSpace, rows, blockSpace } = this.settings;
+    const reverseY = rows - row;
     this.effects.fall = this.scene.tweens.add({
       targets: this,
-      y: row * this.settings.blockSpace + this.settings.blockSpace / 2,
+      y: reverseY * blockSpace + halfSpace,
       duration: 300,
       ease: Phaser.Math.Easing.Sine.In,
-      delay: reverseY * 100 + Math.random() * 90,
+      delay: row * 100 + Math.random() * 90,
       onComplete: () => {
         delete this.effects.fall;
+        if (row === 0) {
+          this.scene.add.particles(this.x, this.y + halfSpace, "circle", {
+            speedY: { min: -20, max: 20 },
+            lifespan: { min: 500, max: 1000 },
+            duration: 1,
+            quantity: 10,
+            x: { min: -halfSpace, max: halfSpace },
+            blendMode: "ADD",
+            tint: [0x333333, 0x0],
+            scale: { start: 0.1, end: 0.4 },
+            alpha: { start: 0.8, end: 0 },
+          });
+        }
       },
     });
     return this;
