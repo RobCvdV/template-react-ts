@@ -24,7 +24,8 @@ import {
 } from "@domains";
 import { ZwapGame } from "@/game";
 import { GameFlow } from "@/game/domains/GameFlow.ts";
-import { BlendModes } from "phaser";
+import { makeConnectionLine } from "@/game/effects/ConnectionLine.ts";
+import { swapBlocks } from "@/game/effects/swapBlocks.ts";
 import Container = Phaser.GameObjects.Container;
 import Pointer = Phaser.Input.Pointer;
 import Vector2 = Phaser.Math.Vector2;
@@ -325,6 +326,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   deselect(): void {
+    this.gameFlow.secondOption = undefined;
     this.gameFlow.selected?.setSelected(false);
     this.gameFlow.matchable.forEach((b) => b.setMatchable(false));
     cons.log("deselected", this.gameFlow.selected?.toLog());
@@ -339,13 +341,18 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       match.selection?.selected.toLog(),
       match.selection?.second.toLog(),
     );
-    // this.gameFlow.sets.forEach((set) => {
-    //   set.blocks.forEach((b) => {
-    //     b.setMatched(true);
-    //     b.setSelected(false);
-    //   });
-    // });
-    // this.gameFlow.clearSets();
+    switch (match.kind) {
+      case "none":
+        break;
+      case "swap":
+        swapBlocks(this.scene, match.selection.selected, block);
+        this.swap(match.selection.selected, match.selection.second);
+        this.deselect();
+        break;
+      case "unlock":
+        cons.log("unlock", match.selection);
+        break;
+    }
   }
 
   handleEventDown(event: Pointer) {
@@ -400,55 +407,17 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       // cons.log("handleEventMove", "block:", block.x, block.y);
       this.dragLine?.destroy();
       this.dragLine = undefined;
-      const line = new Phaser.Geom.Line(
-        this.gameFlow.selected.x,
-        this.gameFlow.selected.y,
-        block.x,
-        block.y,
+      this.dragLine = makeConnectionLine(
+        this.scene,
+        this.gameFlow.selected,
+        block,
       );
-      const length = Phaser.Math.Distance.Between(
-        this.gameFlow.selected.x,
-        this.gameFlow.selected.y,
-        block.x,
-        block.y,
-      );
-      this.dragLine = this.scene.add
-        .particles(0, 0, "blue-light", {
-          blendMode: BlendModes.ADD,
-          alpha: { start: 0.5, end: 0, ease: Phaser.Math.Easing.Sine.In },
-          lifespan: 200,
-          scale: {
-            start: 0.2,
-            end: 0.5,
-            ease: Phaser.Math.Easing.Sine.In,
-          },
-          speedX: [-10, 10],
-          speedY: [-10, 10],
-          quantity: length / 25,
-          emitZone: {
-            type: "random",
-            source: line,
-            quantity: 1,
-          },
-        })
-        .setDepth(5)
-        .setBlendMode(Phaser.BlendModes.ADD);
       this.blocks.add(this.dragLine);
     } else if (this.dragLine && !block.isMatchable) {
       this.gameFlow.secondOption = undefined;
       this.dragLine.destroy();
       this.dragLine = undefined;
     }
-    // const pos = this.blocks
-    //   .getLocalTransformMatrix()
-    //   .applyInverse(event.x, event.y);
-    // const block = this.getBlockAt(pos);
-    // if (!block) {
-    //   return;
-    // }
-    // this.gameFlow.selected?.setSelected(false);
-    // block.setSelected(true);
-    // this.gameFlow.selected = block;
   }
 
   toLog() {
