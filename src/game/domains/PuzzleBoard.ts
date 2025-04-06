@@ -338,7 +338,6 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     // this.gameFlow.clearSets();
   }
 
-  dragLine?: Phaser.GameObjects.Line;
   handleEventDown(event: Pointer) {
     if (this.gameFlow.interactionDisabled) {
       return;
@@ -350,12 +349,11 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
         this.select(block);
       } else if (block === this.gameFlow.selected) {
         this.deselect();
-      } else {
-        this.doReactions(block);
       }
     }
   }
 
+  dragLine?: Phaser.GameObjects.Shape;
   handleEventUp(event: Pointer) {
     if (this.gameFlow.interactionDisabled) {
       return;
@@ -379,29 +377,36 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     if (this.gameFlow.interactionDisabled) {
       return;
     }
-    const pos = this.getLocalPosition(event);
     event.event.stopPropagation();
-    if (this.gameFlow.selected && !this.dragLine) {
+    const block = this.getBlockAt(event);
+
+    if (
+      this.gameFlow.selected &&
+      block?.isMatchable &&
+      block.id !== this.gameFlow.selected.id &&
+      block.id != this.gameFlow.secondOption?.id
+    ) {
+      cons.log("handleEventMove", "block:", block.x, block.y);
+      this.dragLine?.destroy();
+      this.dragLine = undefined;
       this.dragLine = this.scene.add
         .line(
-          this.blocks.x,
-          this.blocks.y,
+          0,
+          0,
+          block.x,
+          block.y,
           this.gameFlow.selected.x,
           this.gameFlow.selected.y,
-          pos.x,
-          pos.y,
-          this.gameFlow.selected.color.color,
-          0.5,
         )
-        .setDepth(10)
-        .setLineWidth(5);
-    } else if (this.dragLine && this.gameFlow.selected) {
-      this.dragLine.setTo(
-        this.gameFlow.selected.x,
-        this.gameFlow.selected.y,
-        pos.x,
-        pos.y,
-      );
+        .setOrigin(0, 0)
+        .setDepth(5)
+        .setAlpha(1)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setLineWidth(10);
+      this.blocks.add(this.dragLine);
+    } else if (this.dragLine && !block.isMatchable) {
+      this.dragLine.destroy();
+      this.dragLine = undefined;
     }
     // const pos = this.blocks
     //   .getLocalTransformMatrix()

@@ -113,7 +113,7 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   toLog(): { text: string; style: string } {
     return {
       text: `${this.bType.code}`,
-      style: `color: ${this.bColor.code}; background-color: #333; border-radius: 3px; padding: 0px 4px; font-size: 16px; margin: 2px;`,
+      style: `background-color: ${this.color.rgba}; color: #333; border-radius: 3px; padding: 0px 4px; font-size: 16px; margin: 2px;`,
     };
   }
 
@@ -121,11 +121,12 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
     this.set("isSelected", selected);
     if (selected) {
       const border = this.scene.add
-        .sprite(this.x, this.y + this.settings.offsetY, "block-border")
+        .sprite(this.x, this.y, "block-border")
         .setTint(this.tint)
         .setAlpha(1)
         .setScale(this.scale * 1.1)
         .setDepth(2);
+      this.parentContainer.add(border);
       this.effects.border = border;
       const startColor = this.color.clone().darken(10);
       const endColor = this.color.clone().brighten(30);
@@ -156,17 +157,22 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
     return this;
   }
 
+  get isMatchable(): boolean {
+    return !!this.get("isMatchable");
+  }
+
   setMatchable(matchable: boolean): this {
     this.set("isMatchable", matchable);
     if (matchable) {
-      const startColor = this.color.clone().darken(10);
+      const startColor = this.color.clone();
       const endColor = this.color.clone().brighten(30);
       const border = this.scene.add
-        .sprite(this.x, this.y + this.settings.offsetY, "block-border")
+        .sprite(this.x, this.y, "block-border")
         .setTint(this.tint)
         .setAlpha(1)
         .setScale(this.scale * 1.1)
         .setDepth(2);
+      this.parentContainer.add(border);
       this.effects.border = border;
       this.tween = this.scene.tweens.addCounter({
         from: 0,
