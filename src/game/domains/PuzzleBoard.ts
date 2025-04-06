@@ -1,12 +1,13 @@
 import { forEach } from "lodash";
 import {
-  AnyObject,
   ensure,
   getNamedLogs,
   getUuid,
   Id,
+  List,
   Position,
   Struct,
+  toList,
 } from "@core";
 import {
   Block,
@@ -26,6 +27,7 @@ import { ZwapGame } from "@/game";
 import { GameFlow } from "@/game/domains/GameFlow.ts";
 import { makeConnectionLine } from "@/game/effects/ConnectionLine.ts";
 import { swapBlocks } from "@/game/effects/swapBlocks.ts";
+import { collectBlocks } from "@/game/effects/collectBlocks.ts";
 import Container = Phaser.GameObjects.Container;
 import Pointer = Phaser.Input.Pointer;
 import Vector2 = Phaser.Math.Vector2;
@@ -39,8 +41,6 @@ export type PuzzleBoardState = {
   gameState?: GameFlow;
 };
 
-type EventType = "mousedown" | "mouseup" | "mousemove";
-
 const cons = getNamedLogs({ name: "PuzzleBoard" });
 export class PuzzleBoard extends Struct<PuzzleBoardState> {
   readonly id: Id = this.state.id ?? getUuid();
@@ -49,7 +49,6 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   readonly scene = this.state.scene;
   readonly blocks: Container;
   readonly gameFlow = new GameFlow();
-  readonly effects: AnyObject<Phaser.GameObjects.GameObject> = {};
 
   // data is a 2D array of Blocks, representing the board
   // data[0][0] is the bottom-left block
@@ -81,7 +80,9 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       scene,
     });
     pb.addBlocksToFillOnTop();
-    pb.data.forEach((col) => col.forEach((b, r) => b.fallToRow(r)));
+    pb.letBlocksFall().catch(
+      cons.i.error("fromSettings - addBlocksToFillOnTop"),
+    );
     return pb;
   }
 
@@ -139,29 +140,36 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     ];
   }
 
-  addBlocksToFillOnTop(): Block[] {
-    cons.log("addBlocksToFillOnTop...");
-    const newBlocks = this.data
-      .map((col, c) => {
-        const count = this.settings.rows - col.length;
-        const nbs = Array.from({ length: count }, (__, r) =>
-          makeRandomBlock(
-            this.scene,
-            this.settings,
-            c,
-            -5,
-            this.blocks,
-          ).fallToRow(r),
-        );
-        col.push(...nbs);
-        return nbs;
-      })
-      .flat();
+  addBlocksToFillOnTop() {
+    // cons.log("addBlocksToFillOnTop...");
+    const newBlocks = this.data.flatMap((col, c) => {
+      const count = this.settings.rows - col.length;
+      const nbs = Array.from({ length: count }, (__, r) =>
+        makeRandomBlock(this.scene, this.settings, c, -5 - r * 3, this.blocks),
+      );
+      col.push(...nbs);
+      return nbs;
+    });
 
-    cons.log("addBlocksToFillOnTop", ...newBlocks.map((b) => b.toLog()));
     this.unchainByRecoloringBlocks(newBlocks);
-    cons.log("addBlocksToFillOnTop count", newBlocks.length);
-    return newBlocks;
+    cons.log("board after addBlocksToFillOnTop\n", ...this.toLog());
+  }
+
+  async letBlocksFall(blocks?: Block[]) {
+    const ids = (blocks ?? this.data.flat()).map((b) => b.id);
+    await Promise.all(
+      this.data.flatMap(async (col) => {
+        return Promise.all(
+          col.flatMap(async (block, r) => {
+            if (!ids.includes(block.id)) {
+              return;
+            }
+            return block.fallToRow(r);
+          }),
+        );
+      }),
+    );
+    cons.log("letBlocksFall done");
   }
 
   addBlocks(blocks: Block[][]): void {
@@ -173,9 +181,8 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
 
   removeBlocks(ids: string[]): void {
     this.data = this.data.map((col) => {
-      return col.filter((b) => ids.includes(b.id));
+      return col.filter((b) => !ids.includes(b.id));
     });
-    // cons.log('board after removeBlocks', this.data);
   }
 
   replaceBlock(block: Block, newBlock: Block): void {
@@ -245,20 +252,20 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     return set;
   }
 
-  getBlockSets(blocks?: Block[]): BlockSet[] {
+  getBlockSets(blocks?: Block[]): List<BlockSet> {
     return (blocks || this.data.flat())
-      .reduce<BlockSet[]>((acc, block) => {
+      .reduce<List<BlockSet>>((acc, block) => {
         const ch = this.findSetForBlock(block);
         if (!acc.includes(ch)) {
           acc.push(ch);
         }
         return acc;
-      }, [])
+      }, toList())
       .filter((set) => set.hasMinimumLength);
   }
 
   private nextRandomColorForBlock(bl: Block) {
-    cons.log("nextRandomColorForBlock", bl.id);
+    // cons.log("nextRandomColorForBlock", bl.id);
     bl.changeColor(
       (bl.colorIndex +
         1 +
@@ -270,7 +277,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   private _unchainByRecoloringBlocks(blocks: Block[]): boolean {
     // first get all the sets where one of the blocks is in
     const sets = this.getBlockSets(blocks);
-    cons.log("sets", ...sets.flatMap((c) => c.toLog()));
+    // cons.log("sets", ...sets.flatMap((c) => c.toLog()));
 
     // then recolor as little blocks as possible to break the sets
     forEach(sets, (set) => {
@@ -287,7 +294,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     do {
       this.clearSets();
       changed = this._unchainByRecoloringBlocks(blocksToCheck);
-      cons.log("unchainByRecoloringBlocks", changed);
+      // cons.log("unchainByRecoloringBlocks", changed);
     } while (changed);
     return this;
   }
@@ -322,18 +329,19 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     this.gameFlow.selected = block;
     this.gameFlow.matchable = this.getAllSwappableWith(block);
     this.gameFlow.matchable.forEach((b) => b.setMatchable(true));
-    cons.log("selected", block.toLog());
+    // cons.log("selected", block.toLog());
   }
 
   deselect(): void {
     this.gameFlow.secondOption = undefined;
     this.gameFlow.selected?.setSelected(false);
-    this.gameFlow.matchable.forEach((b) => b.setMatchable(false));
-    cons.log("deselected", this.gameFlow.selected?.toLog());
+    this.gameFlow.matchable.forEach((b) => b?.setMatchable(false));
+    this.gameFlow.matchable = [];
     this.gameFlow.selected = undefined;
   }
 
-  doReactions(block: Block): void {
+  async doReactions(block: Block) {
+    this.gameFlow.interactionDisabled = true;
     const match = this.getMatchInfo(block);
     cons.log(
       "doReactions",
@@ -345,14 +353,48 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       case "none":
         break;
       case "swap":
-        swapBlocks(this.scene, match.selection.selected, block);
-        this.swap(match.selection.selected, match.selection.second);
         this.deselect();
+        await swapBlocks(this.scene, match.selection.selected, block);
+        this.swap(match.selection.selected, match.selection.second);
+        await this.doChainReactions();
+        cons.log("swap and chain reactions done");
         break;
       case "unlock":
         cons.log("unlock", match.selection);
         break;
     }
+    this.gameFlow.interactionDisabled = false;
+    cons.log("interactionDisabled false");
+  }
+
+  async doChainReactions() {
+    let hasSets = true;
+    do {
+      this.clearSets();
+      hasSets = await this.collectSets();
+      cons.log("doChainReactions", hasSets);
+    } while (hasSets);
+  }
+
+  async collectSets(): Promise<boolean> {
+    const sets = this.getBlockSets();
+    cons.log("collectSets", ...sets.flatMap((s) => s.toLog()));
+    if (sets.length === 0) {
+      this.clearSets();
+      cons.log("no sets found");
+      return false;
+    }
+    await sets.mapAsync(async (st) => {
+      const keys = st.allBlocks.map((b) => b.id);
+      this.removeBlocks(keys);
+      return collectBlocks(this.scene, st);
+    });
+    cons.log("after collectBlocks");
+    this.addBlocksToFillOnTop();
+    cons.log("after addBlocksToFillOnTop");
+    await this.letBlocksFall();
+    cons.log("after letBlocksFall", ...this.toLog());
+    return true;
   }
 
   handleEventDown(event: Pointer) {
@@ -383,7 +425,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       return;
     }
     if (this.gameFlow.selected) {
-      this.doReactions(block);
+      this.doReactions(block).catch(cons.i.error("handleEventUp"));
     }
     if (this.gameFlow.selected?.id !== block.id) {
       this.deselect();

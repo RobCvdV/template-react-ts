@@ -26,7 +26,7 @@ export class ZwapGame extends Scene {
     this.camera = this.cameras.main;
 
     this.background = this.add.image(300, 600, "background");
-    this.background.setAlpha(0.5);
+    this.background.setAlpha(0.3);
     this.board = PuzzleBoard.fromSettings(this, "Normal");
 
     EventBus.emit("current-scene-ready", this);

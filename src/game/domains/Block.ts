@@ -1,4 +1,4 @@
-import { AnyObject, getUuid, logColors } from "@core";
+import { AnyObject, getUuid, logColors, waitMs } from "@core";
 import { GameObjectStruct, SpriteData } from "@/game/core/GameObjectStruct.ts";
 import {
   BlockColor,
@@ -33,7 +33,6 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   public color: Color;
   public bColor: BlockColor;
   protected effects: AnyObject<Sprite | Tween | ParticleEmitter> = {};
-  readonly container: Phaser.GameObjects.Container;
 
   constructor(scene: ZwapGame, block: T) {
     const typeNr = block.type ?? 0;
@@ -51,12 +50,6 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
     if (block.isSelected) {
       this.setSelected(true);
     }
-
-    // this.setInteractive({
-    //   cursor: "pointer",
-    //   hitArea: new Phaser.Geom.Rectangle(0, 0, this.width, this.height),
-    //   hitAreaCallback: Phaser.Geom.Rectangle.Contains,
-    // });
   }
 
   changeColor(colorNr: number): this {
@@ -199,36 +192,47 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
     return this;
   }
 
-  fallToRow(row: number): this {
-    const { halfSpace, rows, blockSpace, offsetY } = this.settings;
+  async fallToRow(row: number) {
+    const { halfSpace, rows, blockSpace } = this.settings;
     const reverseY = rows - row - 1;
+    const newY = reverseY * blockSpace + halfSpace;
+    const distance = Math.abs(this.y - newY);
+    const duration = Math.log(distance + 1) * 50 + Math.random() * 70;
     this.scene.tweens.add({
       targets: this,
-      y: reverseY * blockSpace + halfSpace,
-      duration: 300,
+      y: newY,
+      duration,
       ease: Phaser.Math.Easing.Sine.In,
-      delay: row * 100 + Math.random() * 90,
+      delay: duration * 0.2,
       onComplete: () => {
         if (row === 0) {
-          this.scene.add
-            .particles(this.x, this.y + halfSpace + offsetY, "cloud", {
+          const emitter = this.scene.add
+            .particles(this.x, this.y + halfSpace * 0.8, "cloud", {
               blendMode: "ADD",
               duration: 1,
               quantity: 10,
               speedX: { min: -30, max: 30 },
               speedY: { min: -10, max: 10 },
               rotate: { min: -20, max: 20 },
-              lifespan: { min: 400, max: 1200 },
+              lifespan: { min: 800, max: 1200 },
               x: { min: -halfSpace, max: halfSpace },
               tint: [0x333333, 0x0],
-              scaleX: { start: 0.15, end: 0.5, ease: "Sine.easeIn" },
-              scaleY: { start: 0.2, end: 1, ease: "Sine.easeIn" },
-              alpha: { start: 0.8, end: 0, random: true, ease: "Sine.easeOut" },
+              scaleX: { start: 0.3, end: 0.5, ease: "Sine.easeOut" },
+              scaleY: { start: 0.3, end: 0.7, ease: "Sine.easeOut" },
+              alpha: {
+                start: 0.8,
+                end: 0,
+                ease: "Sine.easeOut",
+              },
             })
             .setDepth(10);
+          this.parentContainer.add(emitter);
+          this.scene.time.delayedCall(400, () => {
+            emitter.destroy();
+          });
         }
       },
     });
-    return this;
+    return waitMs(duration);
   }
 }
