@@ -1,5 +1,6 @@
 import { Scene } from "phaser";
 import { blocks, shapes } from "../domains/shapes.ts";
+import { sounds } from "@/game";
 
 export class Preloader extends Scene {
   constructor() {
@@ -33,6 +34,7 @@ export class Preloader extends Scene {
     this.load.image("blue-light", "sprites/blue-light-dot.png");
     shapes.forEach(([key, path]) => this.load.image(key, path));
     blocks.forEach(([key, path]) => this.load.image(key, path));
+    sounds.forEach(([key, path]) => this.load.audio(key, "sounds/" + path));
   }
 
   create() {

@@ -13,6 +13,19 @@ export async function swapBlocks(scene: Scene, selected: Block, second: Block) {
     );
     second.parentContainer.moveTo(second, second.parentContainer.length - 1);
 
+    const distance = Phaser.Math.Distance.Between(
+      selectedX,
+      selectedY,
+      secondX,
+      secondY,
+    );
+    const duration = 100 + Math.log(distance + 1) * 50;
+
+    // Play sound effect
+    scene.sound.play("swap", {
+      rate: Phaser.Math.FloatBetween(0.9, 1.1),
+    });
+
     // Calculate control points for the curve
     const controlX = (selectedX + secondX) / 2;
     const controlY = (selectedY + secondY) / 2;
@@ -38,7 +51,7 @@ export async function swapBlocks(scene: Scene, selected: Block, second: Block) {
       x: { getEnd: () => secondX },
       y: { getEnd: () => secondY },
       ease: Phaser.Math.Easing.Quadratic.InOut,
-      duration: 400,
+      duration,
       onUpdate: (tween, target) => {
         const t = tween.progress;
         const point = curve1.getPoint(t);
@@ -56,7 +69,7 @@ export async function swapBlocks(scene: Scene, selected: Block, second: Block) {
       x: { getEnd: () => selectedX },
       y: { getEnd: () => selectedY },
       ease: Phaser.Math.Easing.Quadratic.InOut,
-      duration: 400,
+      duration,
       onUpdate: (tween, target) => {
         const t = tween.progress;
         const point = curve2.getPoint(t);

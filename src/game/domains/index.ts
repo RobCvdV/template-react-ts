@@ -2,6 +2,7 @@ export * from "./BlockType";
 export * from "./BlockColor";
 export * from "./shapes";
 export * from "./themes";
+export * from "./sounds";
 export * from "./Block";
 export * from "./Bomb";
 export * from "./BlockSet";

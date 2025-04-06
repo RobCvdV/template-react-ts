@@ -197,7 +197,10 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
     const reverseY = rows - row - 1;
     const newY = reverseY * blockSpace + halfSpace;
     const distance = Math.abs(this.y - newY);
-    const duration = Math.log(distance + 1) * 50 + Math.random() * 70;
+    if (distance < 1) {
+      return;
+    }
+    const duration = Math.log(distance * 3 + 1) * 50 + Math.random() * 70;
     this.scene.tweens.add({
       targets: this,
       y: newY,
@@ -205,32 +208,9 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
       ease: Phaser.Math.Easing.Sine.In,
       delay: duration * 0.2,
       onComplete: () => {
-        if (row === 0) {
-          const emitter = this.scene.add
-            .particles(this.x, this.y + halfSpace * 0.8, "cloud", {
-              blendMode: "ADD",
-              duration: 1,
-              quantity: 10,
-              speedX: { min: -30, max: 30 },
-              speedY: { min: -10, max: 10 },
-              rotate: { min: -20, max: 20 },
-              lifespan: { min: 800, max: 1200 },
-              x: { min: -halfSpace, max: halfSpace },
-              tint: [0x333333, 0x0],
-              scaleX: { start: 0.3, end: 0.5, ease: "Sine.easeOut" },
-              scaleY: { start: 0.3, end: 0.7, ease: "Sine.easeOut" },
-              alpha: {
-                start: 0.8,
-                end: 0,
-                ease: "Sine.easeOut",
-              },
-            })
-            .setDepth(10);
-          this.parentContainer.add(emitter);
-          this.scene.time.delayedCall(400, () => {
-            emitter.destroy();
-          });
-        }
+        this.scene.sound.play("switch03", {
+          rate: Phaser.Math.FloatBetween(0.8, 1.2),
+        });
       },
     });
     return waitMs(duration);

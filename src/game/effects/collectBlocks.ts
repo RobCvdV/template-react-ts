@@ -9,6 +9,11 @@ export async function collectBlocks(scene: Scene, blockSet: BlockSet) {
   const centerY =
     blocks.reduce((sum, block) => sum + block.y, 0) / blocks.length;
 
+  const pitch = Math.log(12 - blocks.length) / Math.log(2) - 1;
+  scene.sound.play("woosh", {
+    rate: Phaser.Math.FloatBetween(pitch, pitch + 0.2),
+  });
+
   blocks.forEach((block) => {
     scene.tweens.add({
       targets: block,
@@ -32,5 +37,5 @@ export async function collectBlocks(scene: Scene, blockSet: BlockSet) {
       },
     });
   });
-  return waitMs(300);
+  return waitMs(250);
 }
