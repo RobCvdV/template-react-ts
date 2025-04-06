@@ -406,9 +406,6 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
         block.x,
         block.y,
       );
-      const distX = block.x - this.gameFlow.selected.x;
-      const distY = block.y - this.gameFlow.selected.y;
-
       const length = Phaser.Math.Distance.Between(
         this.gameFlow.selected.x,
         this.gameFlow.selected.y,
@@ -418,20 +415,10 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       this.dragLine = this.scene.add
         .particles(0, 0, "blue-light", {
           blendMode: BlendModes.ADD,
-          alpha: { start: 0.3, end: 0, ease: Phaser.Math.Easing.Sine.In },
-          lifespan: 400,
-          // speedX: {
-          //   start: 0.1,
-          //   end: (3 * distY) / length,
-          //   // ease: Phaser.Math.Easing.Sine.In,
-          // },
-          // speedY: {
-          //   start: 0.1,
-          //   end: (3 * distX) / length,
-          //   // ease: Phaser.Math.Easing.Sine.In,
-          // },
+          alpha: { start: 0.5, end: 0, ease: Phaser.Math.Easing.Sine.In },
+          lifespan: 200,
           scale: {
-            start: 0.02,
+            start: 0.2,
             end: 0.5,
             ease: Phaser.Math.Easing.Sine.In,
           },
