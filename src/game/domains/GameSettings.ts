@@ -31,7 +31,7 @@ export class GameSettings extends Child<GameSettingsState> {
   readonly height = this.blockSpace * this.rows;
   readonly screenWidth = this.state.screenWidth;
   readonly screenHeight = this.state.screenHeight;
-  readonly offsetY: number = this.screenHeight - this.height;
+  readonly offsetY: number = this.screenHeight - this.height - 50;
 
   static Normal(gs: {
     screenWidth: number;

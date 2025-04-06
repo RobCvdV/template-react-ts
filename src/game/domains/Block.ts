@@ -5,6 +5,7 @@ import {
   BlockType,
   GameSettings,
   GameTheme,
+  randomDropSound,
   ZwapGame,
 } from "@game";
 import Color = Phaser.Display.Color;
@@ -208,8 +209,8 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
       ease: Phaser.Math.Easing.Sine.In,
       delay: duration * 0.2,
       onComplete: () => {
-        this.scene.sound.play("switch03", {
-          rate: Phaser.Math.FloatBetween(0.8, 1.2),
+        this.scene.sound.play(randomDropSound(), {
+          rate: Phaser.Math.FloatBetween(0.9, 1.3),
         });
       },
     });

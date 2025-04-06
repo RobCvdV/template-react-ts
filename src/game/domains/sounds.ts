@@ -27,3 +27,21 @@ export type SoundAsset = (typeof sounds)[number][0];
 export const soundKeys = sounds.map(([key]) => key) as SoundAsset[];
 
 export const soundAssets = Object.fromEntries(sounds);
+
+const switchSounds = [
+  "switch01",
+  "switch02",
+  "switch03",
+  "switch04",
+  "switch05",
+  "switch06",
+  "switch07",
+  "switch08",
+  "switch09",
+  "switch10",
+  "switch11",
+];
+
+export function randomDropSound(): SoundAsset {
+  return Phaser.Utils.Array.GetRandom(switchSounds) as SoundAsset;
+}
