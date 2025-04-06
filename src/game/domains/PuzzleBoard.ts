@@ -1,5 +1,13 @@
 import { forEach } from "lodash";
-import { ensure, getNamedLogs, getUuid, Id, Position, Struct } from "@core";
+import {
+  AnyObject,
+  ensure,
+  getNamedLogs,
+  getUuid,
+  Id,
+  Position,
+  Struct,
+} from "@core";
 import {
   Block,
   BlockData,
@@ -16,6 +24,7 @@ import {
 } from "@domains";
 import { ZwapGame } from "@/game";
 import { GameFlow } from "@/game/domains/GameFlow.ts";
+import { BlendModes } from "phaser";
 import Container = Phaser.GameObjects.Container;
 import Pointer = Phaser.Input.Pointer;
 import Vector2 = Phaser.Math.Vector2;
@@ -39,6 +48,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   readonly scene = this.state.scene;
   readonly blocks: Container;
   readonly gameFlow = new GameFlow();
+  readonly effects: AnyObject<Phaser.GameObjects.GameObject> = {};
 
   // data is a 2D array of Blocks, representing the board
   // data[0][0] is the bottom-left block
@@ -353,7 +363,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     }
   }
 
-  dragLine?: Phaser.GameObjects.Shape;
+  dragLine?: Phaser.GameObjects.Particles.ParticleEmitter;
   handleEventUp(event: Pointer) {
     if (this.gameFlow.interactionDisabled) {
       return;
@@ -386,25 +396,59 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       block.id !== this.gameFlow.selected.id &&
       block.id != this.gameFlow.secondOption?.id
     ) {
-      cons.log("handleEventMove", "block:", block.x, block.y);
+      this.gameFlow.secondOption = block;
+      // cons.log("handleEventMove", "block:", block.x, block.y);
       this.dragLine?.destroy();
       this.dragLine = undefined;
+      const line = new Phaser.Geom.Line(
+        this.gameFlow.selected.x,
+        this.gameFlow.selected.y,
+        block.x,
+        block.y,
+      );
+      const distX = block.x - this.gameFlow.selected.x;
+      const distY = block.y - this.gameFlow.selected.y;
+
+      const length = Phaser.Math.Distance.Between(
+        this.gameFlow.selected.x,
+        this.gameFlow.selected.y,
+        block.x,
+        block.y,
+      );
       this.dragLine = this.scene.add
-        .line(
-          0,
-          0,
-          block.x,
-          block.y,
-          this.gameFlow.selected.x,
-          this.gameFlow.selected.y,
-        )
-        .setOrigin(0, 0)
+        .particles(0, 0, "blue-light", {
+          blendMode: BlendModes.ADD,
+          alpha: { start: 0.3, end: 0, ease: Phaser.Math.Easing.Sine.In },
+          lifespan: 400,
+          // speedX: {
+          //   start: 0.1,
+          //   end: (3 * distY) / length,
+          //   // ease: Phaser.Math.Easing.Sine.In,
+          // },
+          // speedY: {
+          //   start: 0.1,
+          //   end: (3 * distX) / length,
+          //   // ease: Phaser.Math.Easing.Sine.In,
+          // },
+          scale: {
+            start: 0.02,
+            end: 0.5,
+            ease: Phaser.Math.Easing.Sine.In,
+          },
+          speedX: [-10, 10],
+          speedY: [-10, 10],
+          quantity: length / 25,
+          emitZone: {
+            type: "random",
+            source: line,
+            quantity: 1,
+          },
+        })
         .setDepth(5)
-        .setAlpha(1)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setLineWidth(10);
+        .setBlendMode(Phaser.BlendModes.ADD);
       this.blocks.add(this.dragLine);
     } else if (this.dragLine && !block.isMatchable) {
+      this.gameFlow.secondOption = undefined;
       this.dragLine.destroy();
       this.dragLine = undefined;
     }
