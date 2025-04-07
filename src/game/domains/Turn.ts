@@ -1,10 +1,12 @@
-import { assertDefined, ensureArray, Struct } from "@core";
+import { AnyObject, assertDefined, ensureArray, Struct } from "@core";
 import { Block, BlockSet, MatchInfo } from "@domains";
 
 export class ChainReaction extends Struct {
   // readonly type: ReactionType
   readonly sets = ensureArray(BlockSet, this.state.sets);
   readonly addedBlocks = ensureArray(Block, this.state.addedBlocks);
+  public reactionNr = this.state.reactionNr ?? (0 as number);
+  readonly scores: AnyObject<number> = this.state.scores ?? {};
 }
 
 export class Turn extends Struct {
@@ -32,7 +34,7 @@ export class Turn extends Struct {
       sets,
       addedBlocks: sets.flatMap((set) => set.allBlocks),
     });
-    this.chainReactions.push(reaction);
+    reaction.reactionNr = this.chainReactions.push(reaction) - 1;
     return reaction;
   }
 

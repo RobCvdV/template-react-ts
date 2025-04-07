@@ -1,6 +1,7 @@
 import { Block, Bomb } from "@domains";
 
 export class BlockSet {
+  score = 0;
   constructor(
     public blocks: Block[] = [],
     public extraBlocks: Block[] = [],
@@ -45,7 +46,9 @@ export class BlockSet {
   }
 
   get isPureType(): boolean {
-    return this.blocks.every((b) => b.hasSameTypeAs(this.blocks[0]));
+    return this.blocks.every(
+      (b) => b.hasSameTypeAs(this.blocks[0]) || b.bType.isBomb || b.bType.isKey,
+    );
   }
 
   get containsLock(): boolean {

@@ -41,8 +41,8 @@ export type PuzzleBoardState = JsonEntity & {
 const cons = getNamedLogs({ name: "PuzzleBoard" });
 export class PuzzleBoard extends Struct<PuzzleBoardState> {
   readonly id: Id = this.state.id ?? getUuid();
-  readonly progress = ensure(GameProgress, this.state.progress, {});
   readonly settings = ensure(GameSettings, this.state.settings, {});
+  readonly progress = ensure(GameProgress, this.state.progress, {});
   readonly _blocks: Container;
   readonly _gameFlow = new GameFlow();
   readonly _scene: ZwapGame;
@@ -68,6 +68,8 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     this._blocks = this._scene.add
       .container(0, state.settings.offsetY)
       .setSize(state.settings.width, state.settings.height);
+    this.progress._settings = this.settings;
+
     this.data =
       this.state.data?.map((col, c) =>
         col.map((cell, r) =>
@@ -385,7 +387,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
 
   async collectSets(): Promise<boolean> {
     const sets = this.getBlockSets();
-    const reaction = this.progress.turn.addChainReaction(sets);
+    const reaction = this.progress.addChainReaction(sets);
     cons.log("collectSets", ...sets.flatMap((s) => s.toLog()));
     if (sets.length === 0) {
       return false;

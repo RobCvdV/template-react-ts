@@ -1,11 +1,12 @@
-// class PlannedBlock extends Struct {
-//   public blockType = this.state.blockType as string;
-//   public move = this.state.move as number;
-//   public position? = this.state.position as Position;
-// }
-
-import { DateTime, ensureArray, Struct } from "@core";
-import { GameSettings, MatchInfo, Turn } from "@domains";
+import { DateTime, ensureArray, getNamedLogs, Struct } from "@core";
+import {
+  BlockSet,
+  ChainReaction,
+  GameSettings,
+  MatchInfo,
+  ScoringValues,
+  Turn,
+} from "@domains";
 
 export type GameProgressState = {
   started?: boolean;
@@ -36,6 +37,7 @@ export type GameProgressState = {
 //   statistics: {},
 // };
 
+const cons = getNamedLogs({ name: "GameProgress" });
 export class GameProgress extends Struct<GameProgressState> {
   public started = (this.state.started as boolean) || false;
   public startMoment = DateTime.orNow(this.state.startMoment);
@@ -66,6 +68,42 @@ export class GameProgress extends Struct<GameProgressState> {
 
   get turn(): Turn {
     return this._turns[this._turns.length - 1];
+  }
+
+  addChainReaction(sets: BlockSet[]): ChainReaction {
+    const reaction = this.turn.addChainReaction(sets);
+    const { scoringValues } = this._settings;
+    reaction.sets.forEach((set) => {
+      set.score = set.blocks.reduce((sum, block) => {
+        const val =
+          scoringValues[block.bType.name as keyof ScoringValues] ??
+          scoringValues.normal;
+        return sum + val;
+      }, 0);
+      if (set.isPureType) {
+        set.score *= scoringValues.pureSetMultiplier;
+        if (set.containsKey) {
+          cons.log("PURE UNLOCK", set);
+        }
+        if (set.bombs.length) {
+          cons.log("PURE BOMB", set);
+        }
+      }
+      if (set.bombs.length >= 2) {
+        set.score *= scoringValues.bombMultiplier * set.bombs.length;
+      }
+      if (set.containsKey) {
+        cons.log("UNLOCK SOMETHING", set);
+      }
+    });
+    reaction.sets.forEach(
+      (set) => (set.score *= scoringValues.comboMultiplier),
+    );
+    if (reaction.sets.length > 1) {
+      reaction.scores.combo = scoringValues.combo * (reaction.sets.length - 1);
+    }
+
+    return reaction;
   }
 
   // getBlocksPlannedForMove(move: number): PlannedBlock[] {

@@ -1,5 +1,28 @@
 import { Child, JsonEntity } from "@core";
 
+export type ScoringValues = {
+  normal: number;
+  circle?: number;
+  square?: number;
+  triangle?: number;
+  star?: number;
+  plus?: number;
+  xmark?: number;
+  heart?: number;
+  wave?: number;
+  lock: number;
+  key: number;
+  wirelessKey: number;
+  bomb: number;
+
+  unlock: number;
+  pureSet: number;
+  combo: number;
+  bombMultiplier: number;
+  pureSetMultiplier: number;
+  comboMultiplier: number;
+};
+
 export type GameSettingsState = JsonEntity & {
   maxColors: number;
   maxBlockTypes: number;
@@ -12,6 +35,7 @@ export type GameSettingsState = JsonEntity & {
   width: number;
   screenWidth: number;
   screenHeight: number;
+  scoringValues: ScoringValues;
 };
 
 export class GameSettings extends Child<GameSettingsState> {
@@ -32,6 +56,7 @@ export class GameSettings extends Child<GameSettingsState> {
   readonly screenWidth = this.state.screenWidth;
   readonly screenHeight = this.state.screenHeight;
   readonly offsetY: number = this.screenHeight - this.height - 50;
+  readonly scoringValues = this.state.scoringValues;
 
   static Normal(gs: {
     screenWidth: number;
@@ -49,6 +74,19 @@ export class GameSettings extends Child<GameSettingsState> {
       speed: 1,
       width: gs.screenWidth,
       ...gs,
+      scoringValues: {
+        normal: 1,
+        bomb: 5,
+        bombMultiplier: 2,
+        lock: 5,
+        key: 5,
+        wirelessKey: 5,
+        unlock: 5,
+        pureSet: 100,
+        pureSetMultiplier: 1,
+        combo: 3,
+        comboMultiplier: 1,
+      },
     });
   }
 }
