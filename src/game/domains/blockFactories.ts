@@ -13,44 +13,51 @@ export function makeBlock(
   scene: ZwapGame,
   state: BlockData,
   container: Container,
+  col?: number,
+  row?: number,
 ): Block {
+  const {
+    settings: {
+      game: { blockSpace },
+    },
+  } = scene;
+  const x = col ? col * blockSpace + blockSpace / 2 : state.x;
+  const y = row ? row * blockSpace + blockSpace / 2 : state.y;
   let bl: Block;
   switch (state.type as Id) {
     case BlockType.Bomb.id:
-      bl = new Bomb(scene, state);
+      bl = new Bomb(scene, { ...state, x, y });
       break;
     default:
-      bl = new Block(scene, state);
+      bl = new Block(scene, { ...state, x, y });
   }
-  container.add(bl);
+  container.add(bl as any);
   return bl;
 }
 
-export function randomBlockData(
-  settings: GameSettings,
-  col: number,
-  row: number,
-): BlockData {
-  const x = col * settings.blockSpace + settings.blockSpace / 2;
-  const y = row * settings.blockSpace + settings.blockSpace / 2;
+export function randomBlockData(settings: GameSettings): BlockData {
   const { maxColors, maxBlockTypes } = settings;
   return {
     id: getUuid(),
     color: Math.floor(Math.random() * maxColors),
     type: Math.floor(Math.random() * maxBlockTypes),
-    x,
-    y,
+    x: 0,
+    y: 0,
     size: { width: settings.blockSize, height: settings.blockSize },
-    settings,
   };
 }
 
 export function makeRandomBlock(
   scene: ZwapGame,
-  settings: GameSettings,
   col: number,
   row: number,
   container: Container,
 ): Block {
-  return makeBlock(scene, randomBlockData(settings, col, row), container);
+  return makeBlock(
+    scene,
+    randomBlockData(scene.settings.game),
+    container,
+    col,
+    row,
+  );
 }

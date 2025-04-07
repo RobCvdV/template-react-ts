@@ -1,5 +1,6 @@
+import * as Phaser from "phaser";
 import { GameObjects } from "phaser";
-import { assertDefined, getNamedLogs, getUuid, JsonEntity, Size } from "@core";
+import { assertDefined, getUuid, Size, toJson } from "@core";
 
 /**
  * @typedef {Object} SpriteData
@@ -7,14 +8,14 @@ import { assertDefined, getNamedLogs, getUuid, JsonEntity, Size } from "@core";
  * @property {number} [y] - The y-coordinate of the sprite.
  * @property {string} [texture] - The texture key of the sprite.
  */
-export type SpriteData = JsonEntity<string> & {
+export type SpriteData = {
+  id: string;
   x: number;
   y: number;
   texture?: string;
   size?: Size;
 };
 
-const cons = getNamedLogs({ name: "GameObjectStruct" });
 /**
  * The GameObjectStruct class is a Phaser GameObject that represents a sprite in the game.
  * It bases its appearance on the data object it receives.
@@ -43,45 +44,14 @@ export class GameObjectStruct<
     if (data.size) {
       this.setDisplaySize(data.size.width, data.size.height);
     }
-    scene.add.existing(this);
+    scene.add.existing(this as any);
     this.addToUpdateList();
   }
 
-  // /**
-  //  * Creates an instance of GameObjectStruct.
-  //  *
-  //  * @param cstr - The constructor/class for the GameObjectStruct.
-  //  * @param {Phaser.Scene} scene - The scene to which this sprite belongs.
-  //  * @param {T} data - The data object containing properties for the sprite.
-  //  * @param {number} [x] - The x-coordinate of the sprite.
-  //  * @param {number} [y] - The y-coordinate of the sprite.
-  //  * @param {string} [texture] - The texture key of the sprite.
-  //  */
-  // static createGO<GO extends GameObjectStruct<T>, T extends SpriteData>(
-  //   cstr: Constructor<GO>,
-  //   scene: Phaser.Scene,
-  //   data: T,
-  //   x?: number,
-  //   y?: number,
-  //   texture?: string,
-  // ) {
-  //   x = x ?? data.x;
-  //   y = y ?? data.y;
-  //   texture = texture ?? data.texture;
-  //   assertDefined(x, "x@GameObjectStruct");
-  //   assertDefined(y, "y@GameObjectStruct");
-  //   assertDefined(texture, "texture@GameObjectStruct");
-  //   cons.log("constructor", x, y, texture);
-  //
-  //   const go = new cstr(scene, x, y, texture);
-  //   go.name = data.id ?? getUuid();
-  //   go.setDataEnabled();
-  //   go.type = this.constructor.name;
-  //   go.data.set(data);
-  //   scene.add.existing(go);
-  //   go.addToUpdateList();
-  //   return go;
-  // }
+  // @ts-ignore
+  toJSON(): T {
+    return toJson(this.data.getAll());
+  }
 
   /**
    * Returns a string representation of the GameObjectStruct.

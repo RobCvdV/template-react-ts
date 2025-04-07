@@ -21,7 +21,7 @@ const cons = getNamedLogs({ name: "ManageGameData" });
 //     // return Promise.resolve(game);
 //     return this.repo.upsertIt(game).then((g) => {
 //       cons.log("createGame", g.id, g instanceof PuzzleBoard);
-//       return this.storage.set("current-game", g.toJSON()).then(() => g);
+//       return this.storage.set("current-game", g.toJson()).then(() => g);
 //       // return g;
 //     });
 //   }
@@ -32,7 +32,7 @@ const cons = getNamedLogs({ name: "ManageGameData" });
 //       .then((gd) => new PuzzleBoard(gd))
 //       .then((gd) => {
 //         cons.log("loadCurrentGame", gd.id);
-//         return this.storage.set("current-game", gd.toJSON()).then(() => gd);
+//         return this.storage.set("current-game", gd.toJson()).then(() => gd);
 //       });
 //     //   .then(gameId => {
 //     //   if (gameId) {

@@ -103,7 +103,7 @@ function styledArgs(...args: any[]): { format: string; styles: string[] } {
         styles.push(arg.style, "");
         return `%c${arg.text}%c`;
       } else if (typeof arg === "object") {
-        return JSON.stringify(arg);
+        return arg;
       }
       return `${arg}`;
     })

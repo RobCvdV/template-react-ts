@@ -1,12 +1,14 @@
-import { forEach } from "lodash";
+import { forEach, pick } from "lodash";
 import {
   ensure,
   getNamedLogs,
   getUuid,
   Id,
+  JsonEntity,
   List,
   Position,
   Struct,
+  toJson,
   toList,
 } from "@core";
 import {
@@ -16,7 +18,6 @@ import {
   GameProgress,
   GameProgressState,
   GameSettings,
-  GameSettingsKey,
   GameSettingsState,
   makeBlock,
   makeRandomBlock,
@@ -32,13 +33,10 @@ import Container = Phaser.GameObjects.Container;
 import Pointer = Phaser.Input.Pointer;
 import Vector2 = Phaser.Math.Vector2;
 
-export type PuzzleBoardState = {
-  id?: Id;
+export type PuzzleBoardState = JsonEntity & {
   data?: BlockData[][];
   settings: GameSettingsState | GameSettings;
-  scene: ZwapGame;
   progress?: GameProgressState | GameProgress;
-  gameState?: GameFlow;
 };
 
 const cons = getNamedLogs({ name: "PuzzleBoard" });
@@ -46,9 +44,9 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   readonly id: Id = this.state.id ?? getUuid();
   readonly progress = ensure(GameProgress, this.state.progress, {});
   readonly settings = ensure(GameSettings, this.state.settings, {});
-  readonly scene = this.state.scene;
   readonly blocks: Container;
   readonly gameFlow = new GameFlow();
+  readonly scene: ZwapGame;
 
   // data is a 2D array of Blocks, representing the board
   // data[0][0] is the bottom-left block
@@ -57,33 +55,45 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   // the first index is the column, the second index is the row
   public data: Block<BlockData>[][];
 
-  constructor(state: PuzzleBoardState) {
+  toJSON(): PuzzleBoardState {
+    return toJson<PuzzleBoardState>(
+      pick(this, "id", "progress", "settings", "data"),
+    );
+  }
+
+  constructor(
+    scene: ZwapGame,
+    readonly state: PuzzleBoardState,
+  ) {
     super(state);
+    this.gameFlow.interactionDisabled = true;
+    this.scene = scene;
     this.blocks = this.scene.add
       .container(0, state.settings.offsetY)
       .setSize(state.settings.width, state.settings.height);
     this.data =
-      this.state.data?.map((col) =>
-        col.map((cell) => makeBlock(this.scene, cell, this.blocks)),
+      this.state.data?.map((col, c) =>
+        col.map((cell, r) =>
+          makeBlock(this.scene, cell, this.blocks, c, -5 - r * 3),
+        ),
       ) ?? Array.from({ length: this.settings.columns }, () => []);
 
     this.initListeners();
   }
 
-  static fromSettings(
-    scene: ZwapGame,
-    mode: GameSettingsKey = "Normal",
-  ): PuzzleBoard {
-    const settings = GameSettings[mode](scene.settings);
-    const pb = new PuzzleBoard({
+  static fromSettings(scene: ZwapGame): PuzzleBoard {
+    const settings = scene.settings.game;
+    const pb = new PuzzleBoard(scene, {
+      id: getUuid(),
       settings,
-      scene,
     });
     pb.addBlocksToFillOnTop();
-    pb.letBlocksFall().catch(
-      cons.i.error("fromSettings - addBlocksToFillOnTop"),
-    );
     return pb;
+  }
+
+  async startGame() {
+    await this.letBlocksFall();
+    this.gameFlow.interactionDisabled = false;
   }
 
   get count(): number {
@@ -145,7 +155,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     const newBlocks = this.data.flatMap((col, c) => {
       const count = this.settings.rows - col.length;
       const nbs = Array.from({ length: count }, (__, r) =>
-        makeRandomBlock(this.scene, this.settings, c, -5 - r * 3, this.blocks),
+        makeRandomBlock(this.scene, c, -5 - r * 3, this.blocks),
       );
       col.push(...nbs);
       return nbs;
@@ -363,6 +373,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
         cons.log("unlock", match.selection);
         break;
     }
+    await this.scene.saveGame(this.toJSON());
     this.gameFlow.interactionDisabled = false;
     cons.log("interactionDisabled false");
   }

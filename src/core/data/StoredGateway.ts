@@ -78,7 +78,7 @@ export class StoredGateway<T extends JsonEntity = JsonEntity> {
   }
 
   add(item: T): Promise<T> {
-    if (this.storage.exists(item.id.toString())) {
+    if (this.storage.exists(`${item.id}`)) {
       return Promise.reject(
         Exception.AlreadyExists.because(
           `add@StoredGateway\n${JSON.stringify(item)}`,
@@ -106,7 +106,7 @@ export class StoredGateway<T extends JsonEntity = JsonEntity> {
   }
 
   upsert(item: T): Promise<T> {
-    return this.storage.set(item.id.toString(), item).then(() => item);
+    return this.storage.set(`${item.id}`, item).then(() => item);
   }
 
   upsertRemove(id: string, item?: T): Promise<T | undefined> {
@@ -125,3 +125,13 @@ export class StoredGateway<T extends JsonEntity = JsonEntity> {
     );
   }
 }
+
+// function getIdAndItem<T extends  JsonEntity>(item: T | string, id?: Id) {
+//   if (typeof item === "string") {
+//     assertDefined(id, "if item is a string, id must be given as a second arg");
+//     return { id: item, item: undefined as any };
+//   } else {
+//     assertDefined(item.id, "item must have an id");
+//     return { id: item.id, item };
+//   }
+// }

@@ -1,11 +1,21 @@
 import { AnyObject, Json } from "@core";
+import { omit } from "lodash";
 
-export class Struct<T extends AnyObject = Json> {
+export class Struct<T extends Json = Json> {
   constructor(protected readonly state: T = {} as T) {}
 
   toJSON(): Json {
-    const { state, ...rest } = this;
-    return rest;
+    const rest = omit(
+      this,
+      "toJSON",
+      "state",
+      "sys",
+      "prototype",
+      "toString",
+      "update",
+      "merge",
+    );
+    return toJson<T>(rest);
   }
 
   toString(): string {
@@ -20,4 +30,8 @@ export class Struct<T extends AnyObject = Json> {
   protected merge(a: T): T {
     return { ...this, ...a };
   }
+}
+
+export function toJson<T extends Json = Json>(o: AnyObject): T {
+  return JSON.parse(JSON.stringify(o)) as T;
 }

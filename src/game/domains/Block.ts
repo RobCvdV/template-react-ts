@@ -8,6 +8,7 @@ import {
   randomDropSound,
   ZwapGame,
 } from "@game";
+import * as Phaser from "phaser";
 import Color = Phaser.Display.Color;
 import Sprite = Phaser.GameObjects.Sprite;
 import Tween = Phaser.Tweens.Tween;
@@ -20,8 +21,6 @@ export type BlockData = SpriteData & {
   isSelected?: boolean;
   isMatchable?: boolean;
   isMatched?: boolean;
-
-  settings: GameSettings;
 };
 
 // the BLockSprite class is a GameObject that represents a block in the game
@@ -33,6 +32,7 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   public bType: BlockType;
   public color: Color;
   public bColor: BlockColor;
+  declare public scene: ZwapGame;
   protected effects: AnyObject<Sprite | Tween | ParticleEmitter> = {};
 
   constructor(scene: ZwapGame, block: T) {
@@ -53,6 +53,11 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
     }
   }
 
+  // @ts-ignore
+  toJSON(): BlockData {
+    return this.data.getAll() as BlockData;
+  }
+
   changeColor(colorNr: number): this {
     const { colors } = this.theme;
     // cons.log("Change color", colorNr, colors[colorNr]);
@@ -68,11 +73,11 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   }
 
   get settings(): GameSettings {
-    return this.get("settings");
+    return this.scene.settings.game;
   }
 
   get theme(): GameTheme {
-    return (this.scene as ZwapGame).settings.theme;
+    return this.scene.settings.theme;
   }
 
   changeType(typeNr: number): this {
@@ -120,7 +125,7 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
         .setAlpha(1)
         .setScale(this.scale * 1.1)
         .setDepth(2);
-      this.parentContainer.add(border);
+      this.parentContainer?.add(border);
       this.effects.border = border;
       const startColor = this.color.clone().darken(10);
       const endColor = this.color.clone().brighten(30);
@@ -166,7 +171,7 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
         .setAlpha(1)
         .setScale(this.scale * 1.1)
         .setDepth(2);
-      this.parentContainer.add(border);
+      this.parentContainer?.add(border);
       this.effects.border = border;
       this.tween = this.scene.tweens.addCounter({
         from: 0,
@@ -209,6 +214,7 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
       ease: Phaser.Math.Easing.Sine.In,
       delay: duration * 0.2,
       onComplete: () => {
+        this.y = newY;
         this.scene.sound.play(randomDropSound(), {
           rate: Phaser.Math.FloatBetween(0.9, 1.3),
         });

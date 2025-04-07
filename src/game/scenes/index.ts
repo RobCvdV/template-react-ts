@@ -1,5 +1,5 @@
 export * from "./Boot";
-export * from "./ZwapGame.ts";
 export * from "./GameOver";
 export * from "./MainMenu";
 export * from "./Preloader";
+export * from "./ZwapGame.ts";

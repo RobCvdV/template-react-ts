@@ -85,7 +85,7 @@ export class List<T = unknown> extends Array<T> {
     return this.filter((i: any) => others.some((o: any) => o[key] === i[key]));
   }
 
-  // toJSON(): Json[] {
+  // toJson(): Json[] {
   //   return this.reduce((a, i) => {
   //
   //     a.push(JSON.parse(i));
