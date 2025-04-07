@@ -5,7 +5,7 @@
 // }
 
 import { DateTime, ensureArray, Struct } from "@core";
-import { Turn } from "@domains";
+import { GameSettings, MatchInfo, Turn } from "@domains";
 
 export type GameProgressState = {
   started?: boolean;
@@ -44,7 +44,9 @@ export class GameProgress extends Struct<GameProgressState> {
   public score = (this.state.score as number) || 0;
   public level = (this.state.level as number) || 1;
   public levelProgress = (this.state.levelProgress as number) || 0;
-  readonly turns = ensureArray(Turn, this.state.turns);
+  public _turns = ensureArray(Turn, this.state.turns);
+
+  public _settings: GameSettings;
 
   public movesWithoutReaction =
     (this.state.movesWithoutReaction as number) || 0;
@@ -54,6 +56,16 @@ export class GameProgress extends Struct<GameProgressState> {
 
   get isOver(): boolean {
     return this.started && this.gameOver;
+  }
+
+  addTurn(match: MatchInfo): Turn {
+    const turn = Turn.fromMatch(match);
+    this._turns.push(turn);
+    return turn;
+  }
+
+  get turn(): Turn {
+    return this._turns[this._turns.length - 1];
   }
 
   // getBlocksPlannedForMove(move: number): PlannedBlock[] {

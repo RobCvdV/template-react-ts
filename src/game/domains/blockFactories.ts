@@ -18,11 +18,11 @@ export function makeBlock(
 ): Block {
   const {
     settings: {
-      game: { blockSpace },
+      game: { blockSpace, halfSpace },
     },
   } = scene;
-  const x = col ? col * blockSpace + blockSpace / 2 : state.x;
-  const y = row ? row * blockSpace + blockSpace / 2 : state.y;
+  const x = col !== undefined ? halfSpace + col * blockSpace : state.x;
+  const y = row !== undefined ? halfSpace + row * blockSpace : state.y;
   let bl: Block;
   switch (state.type as Id) {
     case BlockType.Bomb.id:

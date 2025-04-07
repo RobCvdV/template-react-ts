@@ -1,4 +1,4 @@
-import { Block, BlockSet } from "@game";
+import { Block } from "@game";
 
 export class GameFlow {
   public interactionDisabled: boolean = false;
@@ -6,5 +6,4 @@ export class GameFlow {
   public selected?: Block;
   public secondOption?: Block;
   public matchable: Block[] = [];
-  public sets: BlockSet[] = [];
 }

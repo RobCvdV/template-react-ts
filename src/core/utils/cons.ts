@@ -125,20 +125,29 @@ function logNamed(
     return;
   }
 
+  let caller = "";
+  if (cmd === "log") {
+    caller = new Error().stack?.split("\n")[3]?.trim() ?? "";
+    caller = caller.replace("at ", "") + "\n";
+  }
+
   const stamp = addTimestamp ? `${timeString()} ` : "";
   const prefix = consSettings.getIdentifier
     ? `${consSettings.getIdentifier()} `
     : "";
   if (args.length === 1 && typeof args[0] === "function") {
     return cons[cmd](
-      stamp + prefix + "%c" + tag + "%c",
+      `%c${caller}%c ${stamp + prefix}%c${tag}%c`,
+      "color: #f99;",
       `color: ${col}; font-weight: bold;`,
       args[0](),
     );
   }
   const { format, styles } = styledArgs(...args);
   return cons[cmd](
-    stamp + prefix + "%c" + tag + "%c " + format,
+    `%c${caller}%c ${stamp + prefix}%c${tag}%c ${format}`,
+    "color: #f99;",
+    "",
     `color: ${col}; font-weight: bold;`,
     "",
     ...styles,

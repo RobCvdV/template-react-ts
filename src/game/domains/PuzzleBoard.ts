@@ -8,7 +8,6 @@ import {
   List,
   Position,
   Struct,
-  toJson,
   toList,
 } from "@core";
 import {
@@ -44,9 +43,9 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   readonly id: Id = this.state.id ?? getUuid();
   readonly progress = ensure(GameProgress, this.state.progress, {});
   readonly settings = ensure(GameSettings, this.state.settings, {});
-  readonly blocks: Container;
-  readonly gameFlow = new GameFlow();
-  readonly scene: ZwapGame;
+  readonly _blocks: Container;
+  readonly _gameFlow = new GameFlow();
+  readonly _scene: ZwapGame;
 
   // data is a 2D array of Blocks, representing the board
   // data[0][0] is the bottom-left block
@@ -56,9 +55,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   public data: Block<BlockData>[][];
 
   toJSON(): PuzzleBoardState {
-    return toJson<PuzzleBoardState>(
-      pick(this, "id", "progress", "settings", "data"),
-    );
+    return pick(super.toJSON(), "id", "progress", "settings", "data");
   }
 
   constructor(
@@ -66,15 +63,15 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     readonly state: PuzzleBoardState,
   ) {
     super(state);
-    this.gameFlow.interactionDisabled = true;
-    this.scene = scene;
-    this.blocks = this.scene.add
+    this._gameFlow.interactionDisabled = true;
+    this._scene = scene;
+    this._blocks = this._scene.add
       .container(0, state.settings.offsetY)
       .setSize(state.settings.width, state.settings.height);
     this.data =
       this.state.data?.map((col, c) =>
         col.map((cell, r) =>
-          makeBlock(this.scene, cell, this.blocks, c, -5 - r * 3),
+          makeBlock(this._scene, cell, this._blocks, c, -5 - r * 3),
         ),
       ) ?? Array.from({ length: this.settings.columns }, () => []);
 
@@ -93,7 +90,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
 
   async startGame() {
     await this.letBlocksFall();
-    this.gameFlow.interactionDisabled = false;
+    this._gameFlow.interactionDisabled = false;
   }
 
   get count(): number {
@@ -117,7 +114,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   getMatchInfo(bl: Block): MatchInfo {
-    const { selected } = this.gameFlow;
+    const { selected } = this._gameFlow;
     if (!selected || !bl || selected.id === bl.id) {
       return { kind: "none" } as MatchInfo;
     }
@@ -155,7 +152,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     const newBlocks = this.data.flatMap((col, c) => {
       const count = this.settings.rows - col.length;
       const nbs = Array.from({ length: count }, (__, r) =>
-        makeRandomBlock(this.scene, c, -5 - r * 3, this.blocks),
+        makeRandomBlock(this._scene, c, -5 - r * 3, this._blocks),
       );
       col.push(...nbs);
       return nbs;
@@ -213,13 +210,9 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     return this.data[x][y];
   }
 
-  private sets: BlockSet[] = [];
-  clearSets() {
-    this.sets = [];
-  }
-
-  findSetForBlock(block: Block): BlockSet {
-    const existing = this.sets.find((set) => set.hasBlock(block));
+  private _sets: BlockSet[] = [];
+  findSetForBlock(block: Block): BlockSet | undefined {
+    const existing = this._sets.find((set) => set.hasBlock(block));
     if (existing) {
       return existing;
     }
@@ -257,21 +250,25 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     );
 
     if (set.hasMinimumLength) {
-      this.sets.push(set);
+      this._sets.push(set);
+      return set;
     }
-    return set;
+    return undefined;
   }
 
   getBlockSets(blocks?: Block[]): List<BlockSet> {
-    return (blocks || this.data.flat())
-      .reduce<List<BlockSet>>((acc, block) => {
+    const sets = (blocks || this.data.flat()).reduce<List<BlockSet>>(
+      (acc, block) => {
         const ch = this.findSetForBlock(block);
-        if (!acc.includes(ch)) {
+        if (ch && !acc.includes(ch)) {
           acc.push(ch);
         }
         return acc;
-      }, toList())
-      .filter((set) => set.hasMinimumLength);
+      },
+      toList(),
+    );
+    this._sets = [];
+    return sets;
   }
 
   private nextRandomColorForBlock(bl: Block) {
@@ -302,7 +299,6 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     const blocksToCheck = blocks || this.data.flat();
     let changed = false;
     do {
-      this.clearSets();
       changed = this._unchainByRecoloringBlocks(blocksToCheck);
       // cons.log("unchainByRecoloringBlocks", changed);
     } while (changed);
@@ -329,29 +325,29 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   getLocalPosition(pos: Position): Vector2 {
-    return this.blocks.getLocalTransformMatrix().applyInverse(pos.x, pos.y);
+    return this._blocks.getLocalTransformMatrix().applyInverse(pos.x, pos.y);
   }
 
   select(block: Block): void {
-    this.gameFlow.selected?.setSelected(false);
-    this.gameFlow.matchable.forEach((b) => b.setMatchable(false));
+    this._gameFlow.selected?.setSelected(false);
+    this._gameFlow.matchable.forEach((b) => b.setMatchable(false));
     block.setSelected(true);
-    this.gameFlow.selected = block;
-    this.gameFlow.matchable = this.getAllSwappableWith(block);
-    this.gameFlow.matchable.forEach((b) => b.setMatchable(true));
+    this._gameFlow.selected = block;
+    this._gameFlow.matchable = this.getAllSwappableWith(block);
+    this._gameFlow.matchable.forEach((b) => b.setMatchable(true));
     // cons.log("selected", block.toLog());
   }
 
   deselect(): void {
-    this.gameFlow.secondOption = undefined;
-    this.gameFlow.selected?.setSelected(false);
-    this.gameFlow.matchable.forEach((b) => b?.setMatchable(false));
-    this.gameFlow.matchable = [];
-    this.gameFlow.selected = undefined;
+    this._gameFlow.secondOption = undefined;
+    this._gameFlow.selected?.setSelected(false);
+    this._gameFlow.matchable.forEach((b) => b?.setMatchable(false));
+    this._gameFlow.matchable = [];
+    this._gameFlow.selected = undefined;
   }
 
   async doReactions(block: Block) {
-    this.gameFlow.interactionDisabled = true;
+    this._gameFlow.interactionDisabled = true;
     const match = this.getMatchInfo(block);
     cons.log(
       "doReactions",
@@ -364,8 +360,9 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
         break;
       case "swap":
         this.deselect();
-        await swapBlocks(this.scene, match.selection.selected, block);
-        this.swap(match.selection.selected, match.selection.second);
+        this.progress.addTurn(match);
+        await swapBlocks(this._scene, match.selection.selected, block);
+        this.swap(match.selection.selected, block);
         await this.doChainReactions();
         cons.log("swap and chain reactions done");
         break;
@@ -373,15 +370,14 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
         cons.log("unlock", match.selection);
         break;
     }
-    await this.scene.saveGame(this.toJSON());
-    this.gameFlow.interactionDisabled = false;
+    await this._scene.saveGame(this.toJSON());
+    this._gameFlow.interactionDisabled = false;
     cons.log("interactionDisabled false");
   }
 
   async doChainReactions() {
     let hasSets = true;
     do {
-      this.clearSets();
       hasSets = await this.collectSets();
       cons.log("doChainReactions", hasSets);
     } while (hasSets);
@@ -389,16 +385,15 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
 
   async collectSets(): Promise<boolean> {
     const sets = this.getBlockSets();
+    const reaction = this.progress.turn.addChainReaction(sets);
     cons.log("collectSets", ...sets.flatMap((s) => s.toLog()));
     if (sets.length === 0) {
-      this.clearSets();
-      cons.log("no sets found");
       return false;
     }
     await sets.mapAsync(async (st) => {
       const keys = st.allBlocks.map((b) => b.id);
       this.removeBlocks(keys);
-      return collectBlocks(this.scene, st);
+      return collectBlocks(this._scene, st);
     });
     cons.log("after collectBlocks");
     this.addBlocksToFillOnTop();
@@ -409,15 +404,15 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   handleEventDown(event: Pointer) {
-    if (this.gameFlow.interactionDisabled) {
+    if (this._gameFlow.interactionDisabled) {
       return;
     }
     event.event.stopPropagation();
     const block = this.getBlockAt(event);
     if (block) {
-      if (!this.gameFlow.selected) {
+      if (!this._gameFlow.selected) {
         this.select(block);
-      } else if (block === this.gameFlow.selected) {
+      } else if (block === this._gameFlow.selected) {
         this.deselect();
       }
     }
@@ -425,7 +420,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
 
   dragLine?: Phaser.GameObjects.Particles.ParticleEmitter;
   handleEventUp(event: Pointer) {
-    if (this.gameFlow.interactionDisabled) {
+    if (this._gameFlow.interactionDisabled) {
       return;
     }
     event.event.stopPropagation();
@@ -435,39 +430,39 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     if (!block) {
       return;
     }
-    if (this.gameFlow.selected) {
+    if (this._gameFlow.selected) {
       this.doReactions(block).catch(cons.i.error("handleEventUp"));
     }
-    if (this.gameFlow.selected?.id !== block.id) {
+    if (this._gameFlow.selected?.id !== block.id) {
       this.deselect();
     }
   }
 
   handleEventMove(event: Pointer) {
-    if (this.gameFlow.interactionDisabled) {
+    if (this._gameFlow.interactionDisabled) {
       return;
     }
     event.event.stopPropagation();
     const block = this.getBlockAt(event);
 
     if (
-      this.gameFlow.selected &&
+      this._gameFlow.selected &&
       block?.isMatchable &&
-      block.id !== this.gameFlow.selected.id &&
-      block.id != this.gameFlow.secondOption?.id
+      block.id !== this._gameFlow.selected.id &&
+      block.id != this._gameFlow.secondOption?.id
     ) {
-      this.gameFlow.secondOption = block;
+      this._gameFlow.secondOption = block;
       // cons.log("handleEventMove", "block:", block.x, block.y);
       this.dragLine?.destroy();
       this.dragLine = undefined;
       this.dragLine = makeConnectionLine(
-        this.scene,
-        this.gameFlow.selected,
+        this._scene,
+        this._gameFlow.selected,
         block,
       );
-      this.blocks.add(this.dragLine);
+      this._blocks.add(this.dragLine);
     } else if (this.dragLine && !block.isMatchable) {
-      this.gameFlow.secondOption = undefined;
+      this._gameFlow.secondOption = undefined;
       this.dragLine.destroy();
       this.dragLine = undefined;
     }
@@ -478,7 +473,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   private initListeners() {
-    this.blocks.setInteractive(
+    this._blocks.setInteractive(
       new Phaser.Geom.Rectangle(
         this.settings.width / 2,
         this.settings.height / 2,
@@ -488,8 +483,8 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       Phaser.Geom.Rectangle.Contains,
     );
 
-    this.blocks.on("pointerdown", this.handleEventDown.bind(this));
-    this.blocks.on("pointerup", this.handleEventUp.bind(this));
-    this.blocks.on("pointermove", this.handleEventMove.bind(this));
+    this._blocks.on("pointerdown", this.handleEventDown.bind(this));
+    this._blocks.on("pointerup", this.handleEventUp.bind(this));
+    this._blocks.on("pointermove", this.handleEventMove.bind(this));
   }
 }

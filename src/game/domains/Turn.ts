@@ -1,7 +1,7 @@
-import { assertDefined, Child, ensureArray, Struct } from "@core";
+import { assertDefined, ensureArray, Struct } from "@core";
 import { Block, BlockSet, MatchInfo } from "@domains";
 
-export class ChainReaction extends Child {
+export class ChainReaction extends Struct {
   // readonly type: ReactionType
   readonly sets = ensureArray(BlockSet, this.state.sets);
   readonly addedBlocks = ensureArray(Block, this.state.addedBlocks);
@@ -27,14 +27,13 @@ export class Turn extends Struct {
     return this;
   }
 
-  get matchedBlocks(): Block[] {
-    const { selected, second } = this.match.selection;
-    return [selected, second].filter((b) => b);
-  }
-
-  addChainReaction(reaction: ChainReaction): Turn {
+  addChainReaction(sets: BlockSet[]): ChainReaction {
+    const reaction = new ChainReaction({
+      sets,
+      addedBlocks: sets.flatMap((set) => set.allBlocks),
+    });
     this.chainReactions.push(reaction);
-    return this;
+    return reaction;
   }
 
   get currentChainReaction(): ChainReaction {

@@ -4,17 +4,10 @@ import { omit } from "lodash";
 export class Struct<T extends Json = Json> {
   constructor(protected readonly state: T = {} as T) {}
 
-  toJSON(): Json {
-    const rest = omit(
-      this,
-      "toJSON",
-      "state",
-      "sys",
-      "prototype",
-      "toString",
-      "update",
-      "merge",
-    );
+  toJSON(): T {
+    const allProps = Object.getOwnPropertyNames(this);
+    const hiddenProps = allProps.filter((prop) => prop.startsWith("_"));
+    const rest = omit(this, "state", "sys", ...hiddenProps);
     return toJson<T>(rest);
   }
 
