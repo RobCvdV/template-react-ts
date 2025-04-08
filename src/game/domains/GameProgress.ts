@@ -1,4 +1,4 @@
-import { DateTime, ensureArray, Struct } from "@core";
+import { cons, DateTime, ensureArray, Struct } from "@core";
 import {
   BlockSet,
   ChainReaction,
@@ -6,7 +6,7 @@ import {
   MatchInfo,
   ScoringValues,
   Turn,
-} from "@domains";
+} from "@game";
 
 export type GameProgressState = {
   started?: boolean;
@@ -75,27 +75,27 @@ export class GameProgress extends Struct<GameProgressState> {
   addChainReaction(sets: BlockSet[]): ChainReaction {
     const reaction = this.turn.addChainReaction(sets);
     const { scoringValues } = this._settings;
-    reaction.sets.forEach((set) => {
-      set.score = set.blocks.reduce((sum, block) => {
+    reaction.sets.forEach((st) => {
+      st.score = st.blocks.reduce((sum, block) => {
         const val =
           scoringValues[block.bType.name as keyof ScoringValues] ??
           scoringValues.normal;
         return sum + val;
       }, 0);
-      if (set.isPureType) {
-        set.score *= scoringValues.pureSetMultiplier + scoringValues.pureSet;
-        if (set.containsKey) {
-          console.log("PURE UNLOCK", set);
+      if (st.isPureType) {
+        st.score *= scoringValues.pureSetMultiplier + scoringValues.pureSet;
+        if (st.containsKey) {
+          console.log("PURE UNLOCK", st);
         }
-        if (set.bombs.length) {
-          console.log("PURE BOMB", set);
+        if (st.bombs.length) {
+          console.log("PURE BOMB", st);
         }
       }
-      if (set.bombs.length >= 2) {
-        set.score *= scoringValues.bombMultiplier * set.bombs.length;
+      if (st.bombs.length >= 2) {
+        st.score *= scoringValues.bombMultiplier * st.bombs.length;
       }
-      if (set.containsKey) {
-        console.log("UNLOCK SOMETHING", set);
+      if (st.containsKey) {
+        console.log("UNLOCK SOMETHING", st);
       }
     });
     reaction.sets.forEach(
@@ -104,7 +104,14 @@ export class GameProgress extends Struct<GameProgressState> {
     if (reaction.sets.length > 1) {
       reaction.scores.combo = scoringValues.combo * (reaction.sets.length - 1);
     }
+    reaction.scores.total = reaction.sets.reduce((sum, set) => {
+      cons.log("set", set);
+      return sum + set.score;
+    }, reaction.scores.combo || 0);
 
+    this.score += reaction.scores.total;
+    this.levelProgress += reaction.addedBlocks.length;
+    cons.log("score", this.score, reaction.scores.total);
     return reaction;
   }
 

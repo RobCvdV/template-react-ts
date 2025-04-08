@@ -1,5 +1,5 @@
-import { Block } from "@domains";
 import { Scene } from "phaser";
+import { Block } from "@game";
 
 export async function swapBlocks(scene: Scene, selected: Block, second: Block) {
   return new Promise<void>((resolve) => {

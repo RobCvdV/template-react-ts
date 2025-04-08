@@ -1,7 +1,14 @@
 import { BlockType } from "@game";
 import { AnyObject } from "@core";
+import Color = Phaser.Display.Color;
 
 export type GameTheme = {
+  ui: {
+    bar: Color;
+    background: Color;
+    text: Color;
+    textShadow: Color;
+  };
   colors: [
     string,
     string,
@@ -34,6 +41,12 @@ export type GameTheme = {
 
 export const themes: AnyObject<GameTheme> = {
   boyish: {
+    ui: {
+      bar: Color.ValueToColor("rgb(169,206,255)"),
+      background: Color.ValueToColor("rgb(26, 26, 26)"),
+      text: Color.ValueToColor("rgb(169,206,255)"),
+      textShadow: Color.ValueToColor("rgb(0, 0, 0)"),
+    },
     colors: [
       "rgb(120, 71, 66)",
       "rgb(255, 184, 61)",
@@ -65,6 +78,12 @@ export const themes: AnyObject<GameTheme> = {
     ],
   },
   girly: {
+    ui: {
+      bar: Color.ValueToColor("rgb(251,149,240)"),
+      background: Color.ValueToColor("rgb(32,3,48)"),
+      text: Color.ValueToColor("rgb(179,111,198)"),
+      textShadow: Color.ValueToColor("rgb(0, 0, 0)"),
+    },
     colors: [
       "rgb(201, 110, 191)",
       "rgb(222, 227, 79)",

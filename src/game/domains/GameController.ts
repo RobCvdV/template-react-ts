@@ -1,6 +1,6 @@
 import { Block } from "@game";
 
-export class GameFlow {
+export class GameController {
   public interactionDisabled: boolean = false;
   public paused: boolean = false;
   public selected?: Block;

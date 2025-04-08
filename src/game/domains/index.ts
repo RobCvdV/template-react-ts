@@ -1,8 +1,5 @@
 export * from "./BlockType";
 export * from "./BlockColor";
-export * from "./shapes";
-export * from "./themes";
-export * from "./sounds";
 export * from "./Block";
 export * from "./Bomb";
 export * from "./BlockSet";
@@ -11,5 +8,8 @@ export * from "./Selection";
 export * from "./PuzzleBoard";
 export * from "./GameProgress";
 export * from "./GameSettings";
+export * from "./EnvironmentSettings";
 export * from "./blockFactories";
 export * from "./Turn";
+export * from "./GameController.ts";
+export * from "./GameHeader.ts";

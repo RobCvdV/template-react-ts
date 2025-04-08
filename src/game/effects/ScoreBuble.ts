@@ -2,14 +2,24 @@ import { SoundAsset, ZwapGame } from "@game";
 import { isString } from "@core";
 import Color = Phaser.Display.Color;
 
+type ScoreBubbleOptions = {
+  col?: Color;
+  baseRate?: number;
+  sound?: SoundAsset;
+  callback?: () => void;
+};
+
 export function makeScoreBubble(
   scene: ZwapGame,
   x: number,
   y: number,
-  col: Color,
   score: number | string,
-  baseRate = 1,
-  sound = "tjing" as SoundAsset,
+  {
+    col = scene.theme.ui.text,
+    baseRate = 1,
+    sound = "tjing",
+    callback,
+  }: ScoreBubbleOptions = {},
 ) {
   const { offsetY, blockSize, centerX } = scene.settings.environment;
   const pan = (x - centerX) / centerX;
@@ -34,18 +44,19 @@ export function makeScoreBubble(
       align: "center",
     })
     .setOrigin(0.5, 0.5);
-  scene.board._container.add(scoreBubble);
+  scene.board.board.add(scoreBubble);
   scene.sound.play(sound, { rate, pan });
   scene.tweens.add({
     targets: scoreBubble,
     alpha: 0.7,
     y: -offsetY / 2,
-    x: centerX,
-    scale: 1,
-    ease: Phaser.Math.Easing.Quintic.In,
+    x: centerX / 3,
+    scale: 0.5,
+    ease: Phaser.Math.Easing.Sine.In,
     duration: 600,
     onComplete: () => {
       scoreBubble.destroy();
+      callback?.();
     },
   });
   return scoreBubble;

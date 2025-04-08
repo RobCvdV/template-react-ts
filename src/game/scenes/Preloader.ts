@@ -1,5 +1,5 @@
 import { Scene } from "phaser";
-import { blocks, shapes } from "../domains/shapes.ts";
+import { blocks, shapes } from "../resources/shapes.ts";
 import { sounds } from "@/game";
 
 export class Preloader extends Scene {
@@ -30,8 +30,10 @@ export class Preloader extends Scene {
 
     this.load.image("logo", "sprites/logo.png");
     this.load.image("background", "sprites/bg.png");
+    this.load.image("background-hor", "sprites/bg-hor.png");
     this.load.image("cloud", "sprites/cloud.png");
     this.load.image("blue-light", "sprites/blue-light-dot.png");
+    this.load.image("blue-light-bar", "sprites/blue-light-gradient.png");
     shapes.forEach(([key, path]) => this.load.image(key, path));
     blocks.forEach(([key, path]) => this.load.image(key, path));
     sounds.forEach(([key, path]) => this.load.audio(key, "sounds/" + path));

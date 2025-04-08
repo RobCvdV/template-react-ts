@@ -1,5 +1,5 @@
 import { Enum } from "@core";
-import { BlockAsset, blockKeys, shapeKeys } from "@/game/domains/shapes.ts";
+import { BlockAsset, blockKeys, shapeKeys } from "@/game/resources/shapes.ts";
 
 export class BlockType extends Enum {
   static Circle = new BlockType("circle", 0, "●");

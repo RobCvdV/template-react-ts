@@ -1,5 +1,5 @@
 import { AnyObject, assertDefined, ensureArray, Struct } from "@core";
-import { Block, BlockSet, MatchInfo } from "@domains";
+import { Block, BlockSet, MatchInfo } from "@game";
 import Vector2 = Phaser.Math.Vector2;
 
 export class ChainReaction extends Struct {
@@ -8,6 +8,7 @@ export class ChainReaction extends Struct {
   readonly addedBlocks = ensureArray(Block, this.state.addedBlocks);
   public reactionNr = this.state.reactionNr ?? (0 as number);
   readonly scores: AnyObject<number> = this.state.scores ?? {};
+
   get center() {
     return this.sets
       .reduce(

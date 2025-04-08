@@ -22,8 +22,8 @@
     "paths": {
       "@/*": ["./*"],
       "@core": ["core"],
-      "@game": ["game"],
-      "@domains": ["game/domains"]
+      "@core-react": ["core-react"],
+      "@game": ["game"]
     }
   },
   "include": ["src"],

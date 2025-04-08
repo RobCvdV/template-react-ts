@@ -32,6 +32,7 @@ export type GameSettingsState = JsonEntity & {
   columns: number;
   rows: number;
   speed: number;
+  progressNeeded: number;
   scoringValues: ScoringValues;
 };
 
@@ -45,6 +46,7 @@ export class GameSettings extends Child<GameSettingsState> {
   readonly columns = this.state.columns;
   readonly rows = this.state.rows;
   readonly speed = this.state.speed;
+  readonly progressNeeded = this.state.progressNeeded;
   readonly scoringValues = this.state.scoringValues;
 
   static Normal = new GameSettings({
@@ -57,6 +59,7 @@ export class GameSettings extends Child<GameSettingsState> {
     columns: 8,
     rows: 12,
     speed: 1,
+    progressNeeded: 100,
     scoringValues: {
       normal: 1,
       bomb: 5,

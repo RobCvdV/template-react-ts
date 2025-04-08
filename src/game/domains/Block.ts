@@ -1,15 +1,16 @@
 import { AnyObject, getUuid, logColors, waitMs } from "@core";
-import { GameObjectStruct, SpriteData } from "@/game/core/GameObjectStruct.ts";
 import {
   BlockColor,
   BlockType,
+  EnvironmentSettings,
+  GameObjectStruct,
   GameSettings,
   GameTheme,
   randomDropSound,
+  SpriteData,
   ZwapGame,
 } from "@game";
 import * as Phaser from "phaser";
-import { EnvironmentSettings } from "@/game/domains/EnvironmentSettings.ts";
 import Color = Phaser.Display.Color;
 import Sprite = Phaser.GameObjects.Sprite;
 import Tween = Phaser.Tweens.Tween;

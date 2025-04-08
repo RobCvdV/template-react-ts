@@ -1,9 +1,11 @@
-import { BlockSet } from "@domains";
+import { BlockSet, makeScoreBubble, ZwapGame } from "@game";
 import { waitMs } from "@core";
-import { ZwapGame } from "@game";
-import { makeScoreBubble } from "@/game/effects/ScoreBuble.ts";
 
-export async function collectBlocks(scene: ZwapGame, blockSet: BlockSet) {
+export async function collectBlocks(
+  scene: ZwapGame,
+  blockSet: BlockSet,
+  callback?: () => void,
+) {
   const blocks = blockSet.allBlocks;
   const score = blockSet.score;
   const { x, y } = blockSet.center;
@@ -37,7 +39,7 @@ export async function collectBlocks(scene: ZwapGame, blockSet: BlockSet) {
           });
         },
       });
-      makeScoreBubble(scene, x, y, scoreColor, score);
+      makeScoreBubble(scene, x, y, score, { col: scoreColor, callback });
       // const pe = scene.add.particles(
       //   centerX,
       //   centerY,

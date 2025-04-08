@@ -1,4 +1,5 @@
 import {
+  EnvironmentSettings,
   EventBus,
   GameSettings,
   GameTheme,
@@ -9,7 +10,6 @@ import {
 import { Scene } from "phaser";
 import { ensure, Json, singleton } from "@core";
 import { StorageBase } from "@/core-react";
-import { EnvironmentSettings } from "@/game/domains/EnvironmentSettings.ts";
 
 type GeneralSettings = {
   theme: GameTheme;
@@ -49,7 +49,7 @@ export class ZwapGame extends Scene {
         "background",
       )
       .setDisplaySize(environment.screenWidth, environment.screenHeight);
-    this.background.setAlpha(0.3);
+    this.background.setAlpha(0.7).setTint(0xff9988);
 
     void this.store
       .get<PuzzleBoardState>("current-game")
@@ -84,5 +84,15 @@ export class ZwapGame extends Scene {
 
   changeScene() {
     this.scene.start("GameOver");
+  }
+
+  get env(): EnvironmentSettings {
+    return this.settings.environment;
+  }
+  get theme(): GameTheme {
+    return this.settings.theme;
+  }
+  get gameSettings(): GameSettings {
+    return this.settings.game;
   }
 }

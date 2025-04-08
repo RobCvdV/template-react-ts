@@ -8,28 +8,30 @@ import {
   List,
   Position,
   Struct,
+  toJson,
   toList,
 } from "@core";
 import {
   Block,
   BlockData,
   BlockSet,
+  collectBlocks,
+  EnvironmentSettings,
+  GameController,
+  GameHeader,
   GameProgress,
   GameProgressState,
   GameSettings,
   GameSettingsState,
   makeBlock,
+  makeConnectionLine,
   makeRandomBlock,
+  makeScoreBubble,
   MatchInfo,
   Selection,
-} from "@domains";
-import { ZwapGame } from "@/game";
-import { GameFlow } from "@/game/domains/GameFlow.ts";
-import { makeConnectionLine } from "@/game/effects/ConnectionLine.ts";
-import { swapBlocks } from "@/game/effects/swapBlocks.ts";
-import { collectBlocks } from "@/game/effects/collectBlocks.ts";
-import { EnvironmentSettings } from "@/game/domains/EnvironmentSettings.ts";
-import { makeScoreBubble } from "@/game/effects/ScoreBuble.ts";
+  swapBlocks,
+  ZwapGame,
+} from "@game";
 import Container = Phaser.GameObjects.Container;
 import Pointer = Phaser.Input.Pointer;
 import Vector2 = Phaser.Math.Vector2;
@@ -43,10 +45,6 @@ export type PuzzleBoardState = JsonEntity & {
 export class PuzzleBoard extends Struct<PuzzleBoardState> {
   readonly id: Id = this.state.id ?? getUuid();
   readonly progress = ensure(GameProgress, this.state.progress, {});
-  readonly _container: Container;
-  readonly _gameFlow = new GameFlow();
-  readonly _scene: ZwapGame;
-
   // data is a 2D array of Blocks, representing the board
   // data[0][0] is the bottom-left block
   // data[x][y] is the block at column x and row y
@@ -54,8 +52,18 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   // the first index is the column, the second index is the row
   public data: Block<BlockData>[][];
 
+  public board: Container;
+  public header: GameHeader;
+  readonly controller = new GameController();
+  readonly scene: ZwapGame;
+
+  // the only fields / props that need to be serialized to recreate the game at any point
+  // in time. "settings" here are GameSettings, environment and theme are flexible and should NOT
+  // be serialized or influence actual game state.
   toJSON(): PuzzleBoardState {
-    return pick(super.toJSON(), "id", "progress", "settings", "data");
+    return toJson<PuzzleBoardState>(
+      pick(this, "id", "progress", "settings", "data"),
+    );
   }
 
   constructor(
@@ -63,31 +71,18 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     readonly state: PuzzleBoardState,
   ) {
     super(state);
-    this._gameFlow.interactionDisabled = true;
-    this._scene = scene;
-    console.log(
-      "PuzzleBoard",
-      this.env.width,
-      this.env.height,
-      this.env.offsetY,
-      this.env.blockSpace,
-    );
-    this._container = this._scene.add
-      .container(this.env.offsetX, this.env.offsetY)
-      .setSize(this.env.width, this.env.height);
+    this.controller.interactionDisabled = true;
+    this.scene = scene;
+    this.initHeader();
+    this.initBoard();
+
     this.progress._getSettings = () => this.settings;
     this.data =
       this.state.data?.map((col, c) =>
         col.map((cell, r) =>
-          makeBlock(this._scene, cell, this._container, c, -5 - r * 3),
+          makeBlock(this.scene, cell, this.board, c, -5 - r * 3),
         ),
       ) ?? Array.from({ length: this.settings.columns }, () => []);
-
-    this.initListeners();
-  }
-
-  get env(): EnvironmentSettings {
-    return this._scene.settings.environment;
   }
 
   static fromSettings(scene: ZwapGame): PuzzleBoard {
@@ -100,13 +95,17 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     return pb;
   }
 
+  get env(): EnvironmentSettings {
+    return this.scene.settings.environment;
+  }
+
   get settings(): GameSettings {
-    return this._scene.settings.game;
+    return this.scene.settings.game;
   }
 
   async startGame() {
     await this.letBlocksFall();
-    this._gameFlow.interactionDisabled = false;
+    this.controller.interactionDisabled = false;
   }
 
   get count(): number {
@@ -130,7 +129,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   getMatchInfo(bl: Block): MatchInfo {
-    const { selected } = this._gameFlow;
+    const { selected } = this.controller;
     if (!selected || !bl || selected.id === bl.id) {
       return { kind: "none" } as MatchInfo;
     }
@@ -168,7 +167,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     const newBlocks = this.data.flatMap((col, c) => {
       const count = this.settings.rows - col.length;
       const nbs = Array.from({ length: count }, (__, r) =>
-        makeRandomBlock(this._scene, c, -5 - r * 3, this._container),
+        makeRandomBlock(this.scene, c, -5 - r * 3, this.board),
       );
       col.push(...nbs);
       return nbs;
@@ -338,29 +337,29 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   getLocalPosition(pos: Position): Vector2 {
-    return this._container.getLocalTransformMatrix().applyInverse(pos.x, pos.y);
+    return this.board.getLocalTransformMatrix().applyInverse(pos.x, pos.y);
   }
 
   select(block: Block): void {
-    this._gameFlow.selected?.setSelected(false);
-    this._gameFlow.matchable.forEach((b) => b.setMatchable(false));
+    this.controller.selected?.setSelected(false);
+    this.controller.matchable.forEach((b) => b.setMatchable(false));
     block.setSelected(true);
-    this._gameFlow.selected = block;
-    this._gameFlow.matchable = this.getAllSwappableWith(block);
-    this._gameFlow.matchable.forEach((b) => b.setMatchable(true));
+    this.controller.selected = block;
+    this.controller.matchable = this.getAllSwappableWith(block);
+    this.controller.matchable.forEach((b) => b.setMatchable(true));
     // console.log("selected", block.toLog());
   }
 
   deselect(): void {
-    this._gameFlow.secondOption = undefined;
-    this._gameFlow.selected?.setSelected(false);
-    this._gameFlow.matchable.forEach((b) => b?.setMatchable(false));
-    this._gameFlow.matchable = [];
-    this._gameFlow.selected = undefined;
+    this.controller.secondOption = undefined;
+    this.controller.selected?.setSelected(false);
+    this.controller.matchable.forEach((b) => b?.setMatchable(false));
+    this.controller.matchable = [];
+    this.controller.selected = undefined;
   }
 
   async doReactions(block: Block) {
-    this._gameFlow.interactionDisabled = true;
+    this.controller.interactionDisabled = true;
     const match = this.getMatchInfo(block);
     console.log(
       "doReactions",
@@ -374,7 +373,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       case "swap":
         this.deselect();
         this.progress.addTurn(match);
-        await swapBlocks(this._scene, match.selection.selected, block);
+        await swapBlocks(this.scene, match.selection.selected, block);
         this.swap(match.selection.selected, block);
         await this.doChainReactions();
         console.log("swap and chain reactions done");
@@ -383,8 +382,8 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
         console.log("unlock", match.selection);
         break;
     }
-    await this._scene.saveGame(this.toJSON());
-    this._gameFlow.interactionDisabled = false;
+    await this.scene.saveGame(this.toJSON());
+    this.controller.interactionDisabled = false;
     console.log("interactionDisabled false");
   }
 
@@ -406,20 +405,18 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     await sets.mapAsync(async (st) => {
       const keys = st.allBlocks.map((b) => b.id);
       this.removeBlocks(keys);
-      return collectBlocks(this._scene, st);
+      return collectBlocks(this.scene, st);
     });
     if (reaction.scores.combo) {
       const { x, y } = reaction.center;
-      makeScoreBubble(
-        this._scene,
-        x,
-        y,
-        Phaser.Display.Color.HexStringToColor("#ff0"),
-        `COMBO\n${reaction.scores.combo}`,
-        Phaser.Math.FloatBetween(0.7, 0.8),
-        "combo",
-      );
+      makeScoreBubble(this.scene, x, y, `COMBO\n${reaction.scores.combo}`, {
+        col: Phaser.Display.Color.HexStringToColor("#ff0"),
+        baseRate: Phaser.Math.FloatBetween(0.8, 0.9),
+        sound: "combo",
+      });
     }
+    this.header.updateScore(this.progress.score);
+    this.header.updateLevelProgress(this.progress.levelProgress);
     console.log("after collectBlocks");
     this.addBlocksToFillOnTop();
     console.log("after addBlocksToFillOnTop");
@@ -429,15 +426,15 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   handleEventDown(event: Pointer) {
-    if (this._gameFlow.interactionDisabled) {
+    if (this.controller.interactionDisabled) {
       return;
     }
     event.event.stopPropagation();
     const block = this.getBlockAt(event);
     if (block) {
-      if (!this._gameFlow.selected) {
+      if (!this.controller.selected) {
         this.select(block);
-      } else if (block === this._gameFlow.selected) {
+      } else if (block === this.controller.selected) {
         this.deselect();
       }
     }
@@ -445,7 +442,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
 
   dragLine?: Phaser.GameObjects.Particles.ParticleEmitter;
   handleEventUp(event: Pointer) {
-    if (this._gameFlow.interactionDisabled) {
+    if (this.controller.interactionDisabled) {
       return;
     }
     event.event.stopPropagation();
@@ -455,39 +452,39 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     if (!block) {
       return;
     }
-    if (this._gameFlow.selected) {
+    if (this.controller.selected) {
       this.doReactions(block).catch(cons.i.error("handleEventUp"));
     }
-    if (this._gameFlow.selected?.id !== block.id) {
+    if (this.controller.selected?.id !== block.id) {
       this.deselect();
     }
   }
 
   handleEventMove(event: Pointer) {
-    if (this._gameFlow.interactionDisabled) {
+    if (this.controller.interactionDisabled) {
       return;
     }
     event.event.stopPropagation();
     const block = this.getBlockAt(event);
 
     if (
-      this._gameFlow.selected &&
+      this.controller.selected &&
       block?.isMatchable &&
-      block.id !== this._gameFlow.selected.id &&
-      block.id != this._gameFlow.secondOption?.id
+      block.id !== this.controller.selected.id &&
+      block.id != this.controller.secondOption?.id
     ) {
-      this._gameFlow.secondOption = block;
+      this.controller.secondOption = block;
       // console.log("handleEventMove", "block:", block.x, block.y);
       this.dragLine?.destroy();
       this.dragLine = undefined;
       this.dragLine = makeConnectionLine(
-        this._scene,
-        this._gameFlow.selected,
+        this.scene,
+        this.controller.selected,
         block,
       );
-      this._container.add(this.dragLine);
+      this.board.add(this.dragLine);
     } else if (this.dragLine && !block.isMatchable) {
-      this._gameFlow.secondOption = undefined;
+      this.controller.secondOption = undefined;
       this.dragLine.destroy();
       this.dragLine = undefined;
     }
@@ -497,19 +494,41 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     return this.data.flatMap((row) => [...row.map((b) => b.toLog()), "\n"]);
   }
 
-  private initListeners() {
-    this._container.setInteractive(
+  private initHeader() {
+    this.header = new GameHeader(this.scene);
+
+    // this._header.setInteractive(
+    //   new Phaser.Geom.Rectangle(
+    //     this._header.width / 2,
+    //     this._header.height / 2,
+    //     this._header.width,
+    //     this._header.height,
+    //   ),
+    //   Phaser.Geom.Rectangle.Contains,
+    // );
+    //
+    // this._header.on("pointerdown", this.handleEventDown.bind(this));
+    // this._header.on("pointermove", this.handleEventMove.bind(this));
+    // this._header.on("pointerup", this.handleEventUp.bind(this));
+  }
+
+  private initBoard() {
+    this.board = this.scene.add
+      .container(this.env.offsetX, this.env.offsetY)
+      .setSize(this.env.width, this.env.height);
+
+    this.board.setInteractive(
       new Phaser.Geom.Rectangle(
-        this.env.width / 2,
-        this.env.height / 2,
-        this.env.width,
-        this.env.height,
+        this.board.width / 2,
+        this.board.height / 2,
+        this.board.width,
+        this.board.height,
       ),
       Phaser.Geom.Rectangle.Contains,
     );
 
-    this._container.on("pointerdown", this.handleEventDown.bind(this));
-    this._container.on("pointerup", this.handleEventUp.bind(this));
-    this._container.on("pointermove", this.handleEventMove.bind(this));
+    this.board.on("pointerdown", this.handleEventDown.bind(this));
+    this.board.on("pointermove", this.handleEventMove.bind(this));
+    this.board.on("pointerup", this.handleEventUp.bind(this));
   }
 }
