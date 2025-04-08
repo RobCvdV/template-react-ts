@@ -22,6 +22,7 @@ export const consSettings: {
   whitelist?: string[];
   blacklist?: string[];
   getIdentifier?: () => string;
+  addCaller?: boolean;
 } = {};
 
 function getCaller() {
@@ -172,7 +173,10 @@ function logNamed(
   col: string | undefined,
   ...args: any[]
 ) {
-  const caller = getCaller();
+  let caller = tag ?? "";
+  if (consSettings.addCaller) {
+    caller = getCaller();
+  }
   if (
     consSettings.whitelist &&
     !consSettings.whitelist?.some((x) => caller.includes(x))
