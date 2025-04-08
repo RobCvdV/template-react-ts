@@ -14,7 +14,8 @@ export class GameHeader extends Container {
     this.scene.add.existing(this);
     this.setDepth(100);
     this.setSize(this.env.screenWidth, this.env.offsetY);
-    const { offsetY, screenWidth } = this.env;
+    let { offsetY, screenWidth } = this.env;
+    offsetY = Math.min(offsetY, 60);
     const centerX = screenWidth / 2;
     const margin = offsetY * 0.06;
     const { text, bar } = this.theme;
