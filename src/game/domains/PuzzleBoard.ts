@@ -29,6 +29,7 @@ import { makeConnectionLine } from "@/game/effects/ConnectionLine.ts";
 import { swapBlocks } from "@/game/effects/swapBlocks.ts";
 import { collectBlocks } from "@/game/effects/collectBlocks.ts";
 import { EnvironmentSettings } from "@/game/domains/EnvironmentSettings.ts";
+import { makeScoreBubble } from "@/game/effects/ScoreBuble.ts";
 import Container = Phaser.GameObjects.Container;
 import Pointer = Phaser.Input.Pointer;
 import Vector2 = Phaser.Math.Vector2;
@@ -42,7 +43,7 @@ export type PuzzleBoardState = JsonEntity & {
 export class PuzzleBoard extends Struct<PuzzleBoardState> {
   readonly id: Id = this.state.id ?? getUuid();
   readonly progress = ensure(GameProgress, this.state.progress, {});
-  readonly _blocks: Container;
+  readonly _container: Container;
   readonly _gameFlow = new GameFlow();
   readonly _scene: ZwapGame;
 
@@ -71,14 +72,14 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       this.env.offsetY,
       this.env.blockSpace,
     );
-    this._blocks = this._scene.add
-      .container(0, this.env.offsetY)
+    this._container = this._scene.add
+      .container(this.env.offsetX, this.env.offsetY)
       .setSize(this.env.width, this.env.height);
     this.progress._getSettings = () => this.settings;
     this.data =
       this.state.data?.map((col, c) =>
         col.map((cell, r) =>
-          makeBlock(this._scene, cell, this._blocks, c, -5 - r * 3),
+          makeBlock(this._scene, cell, this._container, c, -5 - r * 3),
         ),
       ) ?? Array.from({ length: this.settings.columns }, () => []);
 
@@ -167,7 +168,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     const newBlocks = this.data.flatMap((col, c) => {
       const count = this.settings.rows - col.length;
       const nbs = Array.from({ length: count }, (__, r) =>
-        makeRandomBlock(this._scene, c, -5 - r * 3, this._blocks),
+        makeRandomBlock(this._scene, c, -5 - r * 3, this._container),
       );
       col.push(...nbs);
       return nbs;
@@ -337,7 +338,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   getLocalPosition(pos: Position): Vector2 {
-    return this._blocks.getLocalTransformMatrix().applyInverse(pos.x, pos.y);
+    return this._container.getLocalTransformMatrix().applyInverse(pos.x, pos.y);
   }
 
   select(block: Block): void {
@@ -407,6 +408,18 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       this.removeBlocks(keys);
       return collectBlocks(this._scene, st);
     });
+    if (reaction.scores.combo) {
+      const { x, y } = reaction.center;
+      makeScoreBubble(
+        this._scene,
+        x,
+        y,
+        Phaser.Display.Color.HexStringToColor("#ff0"),
+        `COMBO\n${reaction.scores.combo}`,
+        Phaser.Math.FloatBetween(0.7, 0.8),
+        "combo",
+      );
+    }
     console.log("after collectBlocks");
     this.addBlocksToFillOnTop();
     console.log("after addBlocksToFillOnTop");
@@ -472,7 +485,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
         this._gameFlow.selected,
         block,
       );
-      this._blocks.add(this.dragLine);
+      this._container.add(this.dragLine);
     } else if (this.dragLine && !block.isMatchable) {
       this._gameFlow.secondOption = undefined;
       this.dragLine.destroy();
@@ -485,7 +498,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   private initListeners() {
-    this._blocks.setInteractive(
+    this._container.setInteractive(
       new Phaser.Geom.Rectangle(
         this.env.width / 2,
         this.env.height / 2,
@@ -495,8 +508,8 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       Phaser.Geom.Rectangle.Contains,
     );
 
-    this._blocks.on("pointerdown", this.handleEventDown.bind(this));
-    this._blocks.on("pointerup", this.handleEventUp.bind(this));
-    this._blocks.on("pointermove", this.handleEventMove.bind(this));
+    this._container.on("pointerdown", this.handleEventDown.bind(this));
+    this._container.on("pointerup", this.handleEventUp.bind(this));
+    this._container.on("pointermove", this.handleEventMove.bind(this));
   }
 }

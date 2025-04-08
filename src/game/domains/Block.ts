@@ -203,7 +203,7 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   }
 
   async fallToRow(row: number) {
-    const { halfSpace, blockSpace } = this.env;
+    const { halfSpace, blockSpace, centerX } = this.env;
     const { rows } = this.settings;
     const reverseY = rows - row - 1;
     const newY = reverseY * blockSpace + halfSpace;
@@ -222,6 +222,7 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
         this.y = newY;
         this.scene.sound.play(randomDropSound(), {
           rate: Phaser.Math.FloatBetween(0.9, 1.3),
+          pan: (this.x - centerX) / centerX,
         });
       },
     });

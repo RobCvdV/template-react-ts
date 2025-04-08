@@ -20,6 +20,7 @@ export const sounds = [
   ["weesh", "woosh.wav"],
   ["woosh", "woosh-low.wav"],
   ["zapped", "zapped-laser.wav"],
+  ["combo", "combo.m4a"],
 ] as const;
 
 export type SoundAsset = (typeof sounds)[number][0];

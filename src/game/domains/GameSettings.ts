@@ -65,9 +65,9 @@ export class GameSettings extends Child<GameSettingsState> {
       key: 5,
       wirelessKey: 5,
       unlock: 5,
-      pureSet: 100,
-      pureSetMultiplier: 1,
-      combo: 3,
+      pureSet: 0,
+      pureSetMultiplier: 5,
+      combo: 50,
       comboMultiplier: 1,
     },
   });

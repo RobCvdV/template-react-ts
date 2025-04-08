@@ -1,4 +1,5 @@
 import { Block, Bomb } from "@domains";
+import Vector2 = Phaser.Math.Vector2;
 
 export class BlockSet {
   score = 0;
@@ -6,6 +7,17 @@ export class BlockSet {
     public blocks: Block[] = [],
     public extraBlocks: Block[] = [],
   ) {}
+
+  get center(): Vector2 {
+    const center = new Vector2(0, 0);
+    this.blocks.forEach((b) => {
+      center.x += b.x;
+      center.y += b.y;
+    });
+    center.x /= this.blocks.length;
+    center.y /= this.blocks.length;
+    return center;
+  }
 
   toString(): string {
     return "[" + this.blocks.map((b) => b.toString()).join("") + "]";

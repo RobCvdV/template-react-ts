@@ -83,7 +83,7 @@ export class GameProgress extends Struct<GameProgressState> {
         return sum + val;
       }, 0);
       if (set.isPureType) {
-        set.score *= scoringValues.pureSetMultiplier;
+        set.score *= scoringValues.pureSetMultiplier + scoringValues.pureSet;
         if (set.containsKey) {
           console.log("PURE UNLOCK", set);
         }
