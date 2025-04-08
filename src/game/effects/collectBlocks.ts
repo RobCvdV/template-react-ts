@@ -15,10 +15,9 @@ export async function collectBlocks(scene: ZwapGame, blockSet: BlockSet) {
     rate: Phaser.Math.FloatBetween(pitch, pitch + 0.2),
   });
 
-  const {
-    color: { rgba },
-    width,
-  } = blocks[0];
+  const { color, width } = blocks[0];
+
+  const rgba = color.clone().brighten(50).rgba;
 
   // blocks.forEach((block) => {
   scene.tweens.add({
@@ -44,7 +43,7 @@ export async function collectBlocks(scene: ZwapGame, blockSet: BlockSet) {
       });
       const scoreBubble = scene.add
         .text(centerX, centerY, `${score}`, {
-          fontSize: width * 0.7 + "px",
+          fontSize: width * 0.5 + "px",
           color: "black",
           padding: { x: 10, y: 5 },
           stroke: rgba,
@@ -68,10 +67,10 @@ export async function collectBlocks(scene: ZwapGame, blockSet: BlockSet) {
         targets: scoreBubble,
         alpha: 0.7,
         y: -30,
-        x: scene.settings.game.screenWidth / 2,
+        x: scene.settings.environment.screenWidth / 2,
         scale: 1,
-        ease: "Power2",
-        duration: 1300,
+        ease: Phaser.Math.Easing.Sine.In,
+        duration: 1000,
         onComplete: () => {
           scoreBubble.destroy();
         },

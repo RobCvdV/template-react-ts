@@ -9,6 +9,7 @@ import {
   ZwapGame,
 } from "@game";
 import * as Phaser from "phaser";
+import { EnvironmentSettings } from "@/game/domains/EnvironmentSettings.ts";
 import Color = Phaser.Display.Color;
 import Sprite = Phaser.GameObjects.Sprite;
 import Tween = Phaser.Tweens.Tween;
@@ -44,7 +45,7 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
     this.addToUpdateList();
     this.name = block.id ?? getUuid();
     this.type = this.constructor.name;
-    this.bType = scene.settings.theme.shapes[typeNr];
+    this.bType = this.theme.shapes[typeNr];
     this.changeColor(block.color);
     this.setDepth(1);
 
@@ -60,7 +61,7 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
 
   changeColor(colorNr: number): this {
     const { colors } = this.theme;
-    // cons.log("Change color", colorNr, colors[colorNr]);
+    // console.log("Change color", colorNr, colors[colorNr]);
     this.color = Color.RGBStringToColor(colors[colorNr]);
     this.bColor = BlockColor.byId<BlockColor>(colorNr);
     this.setTint(this.color.color);
@@ -74,6 +75,9 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
 
   get settings(): GameSettings {
     return this.scene.settings.game;
+  }
+  get env(): EnvironmentSettings {
+    return this.scene.settings.environment;
   }
 
   get theme(): GameTheme {
@@ -199,7 +203,8 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   }
 
   async fallToRow(row: number) {
-    const { halfSpace, rows, blockSpace } = this.settings;
+    const { halfSpace, blockSpace } = this.env;
+    const { rows } = this.settings;
     const reverseY = rows - row - 1;
     const newY = reverseY * blockSpace + halfSpace;
     const distance = Math.abs(this.y - newY);

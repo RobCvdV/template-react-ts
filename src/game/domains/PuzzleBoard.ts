@@ -1,7 +1,7 @@
 import { forEach, pick } from "lodash";
 import {
+  cons,
   ensure,
-  getNamedLogs,
   getUuid,
   Id,
   JsonEntity,
@@ -28,6 +28,7 @@ import { GameFlow } from "@/game/domains/GameFlow.ts";
 import { makeConnectionLine } from "@/game/effects/ConnectionLine.ts";
 import { swapBlocks } from "@/game/effects/swapBlocks.ts";
 import { collectBlocks } from "@/game/effects/collectBlocks.ts";
+import { EnvironmentSettings } from "@/game/domains/EnvironmentSettings.ts";
 import Container = Phaser.GameObjects.Container;
 import Pointer = Phaser.Input.Pointer;
 import Vector2 = Phaser.Math.Vector2;
@@ -38,10 +39,8 @@ export type PuzzleBoardState = JsonEntity & {
   progress?: GameProgressState | GameProgress;
 };
 
-const cons = getNamedLogs({ name: "PuzzleBoard" });
 export class PuzzleBoard extends Struct<PuzzleBoardState> {
   readonly id: Id = this.state.id ?? getUuid();
-  readonly settings = ensure(GameSettings, this.state.settings, {});
   readonly progress = ensure(GameProgress, this.state.progress, {});
   readonly _blocks: Container;
   readonly _gameFlow = new GameFlow();
@@ -65,11 +64,17 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     super(state);
     this._gameFlow.interactionDisabled = true;
     this._scene = scene;
+    console.log(
+      "PuzzleBoard",
+      this.env.width,
+      this.env.height,
+      this.env.offsetY,
+      this.env.blockSpace,
+    );
     this._blocks = this._scene.add
-      .container(0, state.settings.offsetY)
-      .setSize(state.settings.width, state.settings.height);
-    this.progress._settings = this.settings;
-
+      .container(0, this.env.offsetY)
+      .setSize(this.env.width, this.env.height);
+    this.progress._getSettings = () => this.settings;
     this.data =
       this.state.data?.map((col, c) =>
         col.map((cell, r) =>
@@ -80,6 +85,10 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     this.initListeners();
   }
 
+  get env(): EnvironmentSettings {
+    return this._scene.settings.environment;
+  }
+
   static fromSettings(scene: ZwapGame): PuzzleBoard {
     const settings = scene.settings.game;
     const pb = new PuzzleBoard(scene, {
@@ -88,6 +97,10 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     });
     pb.addBlocksToFillOnTop();
     return pb;
+  }
+
+  get settings(): GameSettings {
+    return this._scene.settings.game;
   }
 
   async startGame() {
@@ -150,7 +163,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   addBlocksToFillOnTop() {
-    // cons.log("addBlocksToFillOnTop...");
+    // console.log("addBlocksToFillOnTop...");
     const newBlocks = this.data.flatMap((col, c) => {
       const count = this.settings.rows - col.length;
       const nbs = Array.from({ length: count }, (__, r) =>
@@ -161,7 +174,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     });
 
     this.unchainByRecoloringBlocks(newBlocks);
-    cons.log("board after addBlocksToFillOnTop\n", ...this.toLog());
+    console.log("board after addBlocksToFillOnTop\n", ...this.toLog());
   }
 
   async letBlocksFall(blocks?: Block[]) {
@@ -178,14 +191,14 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
         );
       }),
     );
-    cons.log("letBlocksFall done");
+    console.log("letBlocksFall done");
   }
 
   addBlocks(blocks: Block[][]): void {
     blocks.forEach((col, x) => {
       this.data[x] = col.concat(this.data[x]);
     });
-    cons.log("board after addBlocks", this.data);
+    console.log("board after addBlocks", this.data);
   }
 
   removeBlocks(ids: string[]): void {
@@ -203,11 +216,8 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     let { x, y } = pos;
     if (pos instanceof Pointer) {
       const localPos = this.getLocalPosition(pos);
-      x = Math.floor(localPos.x / this.settings.blockSpace);
-      y =
-        this.settings.rows -
-        Math.floor(localPos.y / this.settings.blockSpace) -
-        1;
+      x = Math.floor(localPos.x / this.env.blockSpace);
+      y = this.settings.rows - Math.floor(localPos.y / this.env.blockSpace) - 1;
     }
     return this.data[x][y];
   }
@@ -274,7 +284,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   private nextRandomColorForBlock(bl: Block) {
-    // cons.log("nextRandomColorForBlock", bl.id);
+    // console.log("nextRandomColorForBlock", bl.id);
     bl.changeColor(
       (bl.colorIndex +
         1 +
@@ -286,7 +296,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   private _unchainByRecoloringBlocks(blocks: Block[]): boolean {
     // first get all the sets where one of the blocks is in
     const sets = this.getBlockSets(blocks);
-    // cons.log("sets", ...sets.flatMap((c) => c.toLog()));
+    // console.log("sets", ...sets.flatMap((c) => c.toLog()));
 
     // then recolor as little blocks as possible to break the sets
     forEach(sets, (set) => {
@@ -302,7 +312,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     let changed = false;
     do {
       changed = this._unchainByRecoloringBlocks(blocksToCheck);
-      // cons.log("unchainByRecoloringBlocks", changed);
+      // console.log("unchainByRecoloringBlocks", changed);
     } while (changed);
     return this;
   }
@@ -337,7 +347,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     this._gameFlow.selected = block;
     this._gameFlow.matchable = this.getAllSwappableWith(block);
     this._gameFlow.matchable.forEach((b) => b.setMatchable(true));
-    // cons.log("selected", block.toLog());
+    // console.log("selected", block.toLog());
   }
 
   deselect(): void {
@@ -351,7 +361,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   async doReactions(block: Block) {
     this._gameFlow.interactionDisabled = true;
     const match = this.getMatchInfo(block);
-    cons.log(
+    console.log(
       "doReactions",
       match.kind,
       match.selection?.selected.toLog(),
@@ -366,29 +376,29 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
         await swapBlocks(this._scene, match.selection.selected, block);
         this.swap(match.selection.selected, block);
         await this.doChainReactions();
-        cons.log("swap and chain reactions done");
+        console.log("swap and chain reactions done");
         break;
       case "unlock":
-        cons.log("unlock", match.selection);
+        console.log("unlock", match.selection);
         break;
     }
     await this._scene.saveGame(this.toJSON());
     this._gameFlow.interactionDisabled = false;
-    cons.log("interactionDisabled false");
+    console.log("interactionDisabled false");
   }
 
   async doChainReactions() {
     let hasSets = true;
     do {
       hasSets = await this.collectSets();
-      cons.log("doChainReactions", hasSets);
+      console.log("doChainReactions", hasSets);
     } while (hasSets);
   }
 
   async collectSets(): Promise<boolean> {
     const sets = this.getBlockSets();
     const reaction = this.progress.addChainReaction(sets);
-    cons.log("collectSets", ...sets.flatMap((s) => s.toLog()));
+    console.log("collectSets", ...sets.flatMap((s) => s.toLog()));
     if (sets.length === 0) {
       return false;
     }
@@ -397,11 +407,11 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       this.removeBlocks(keys);
       return collectBlocks(this._scene, st);
     });
-    cons.log("after collectBlocks");
+    console.log("after collectBlocks");
     this.addBlocksToFillOnTop();
-    cons.log("after addBlocksToFillOnTop");
+    console.log("after addBlocksToFillOnTop");
     await this.letBlocksFall();
-    cons.log("after letBlocksFall", ...this.toLog());
+    console.log("after letBlocksFall", ...this.toLog());
     return true;
   }
 
@@ -454,7 +464,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       block.id != this._gameFlow.secondOption?.id
     ) {
       this._gameFlow.secondOption = block;
-      // cons.log("handleEventMove", "block:", block.x, block.y);
+      // console.log("handleEventMove", "block:", block.x, block.y);
       this.dragLine?.destroy();
       this.dragLine = undefined;
       this.dragLine = makeConnectionLine(
@@ -477,10 +487,10 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   private initListeners() {
     this._blocks.setInteractive(
       new Phaser.Geom.Rectangle(
-        this.settings.width / 2,
-        this.settings.height / 2,
-        this.settings.width,
-        this.settings.height,
+        this.env.width / 2,
+        this.env.height / 2,
+        this.env.width,
+        this.env.height,
       ),
       Phaser.Geom.Rectangle.Contains,
     );

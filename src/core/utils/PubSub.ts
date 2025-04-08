@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { AnyObject, Exception, Func, getNamedLogs, getUuid, Id } from "@core";
+import { AnyObject, Exception, Func, getUuid, Id } from "@core";
 
 export type PubSubEventType = {
   Error: { error: string | Error | Exception } & AnyObject;
@@ -36,12 +36,11 @@ export type SubscribeFunction = <T extends PubSubEventKeys>(
 ) => Func<void, never>;
 
 const subscriptions: { [key: Id]: Subscription<any> } = {};
-const cons = getNamedLogs({ name: "PubSub" });
 
 export const subscribe: SubscribeFunction = (event, callback) => {
   const id = getUuid();
   const _event = _.isString(event) ? { type: event } : event;
-  cons.log("subscribe", _event, id, subscriptions);
+  console.log("subscribe", _event, id, subscriptions);
 
   const unsubscribe = () => {
     delete subscriptions[id];
@@ -78,6 +77,6 @@ export const publish = <T extends PubSubEventKeys>(
     .map((s) => s.callback(_event)).length;
 
   if (fired) {
-    cons.log("event", _event, "handled by", fired, "subscribers");
+    console.log("event", _event, "handled by", fired, "subscribers");
   }
 };

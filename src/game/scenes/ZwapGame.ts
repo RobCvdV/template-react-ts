@@ -7,54 +7,78 @@ import {
   themes,
 } from "@game";
 import { Scene } from "phaser";
-import { getNamedLogs, Json, singleton } from "@core";
+import { ensure, Json, singleton } from "@core";
 import { StorageBase } from "@/core-react";
+import { EnvironmentSettings } from "@/game/domains/EnvironmentSettings.ts";
 
 type GeneralSettings = {
   theme: GameTheme;
   game: GameSettings;
+  environment: EnvironmentSettings;
 };
 
-const cons = getNamedLogs({ name: "ZwapGame" });
 export class ZwapGame extends Scene {
   camera: Phaser.Cameras.Scene2D.Camera;
   background: Phaser.GameObjects.Image;
   gameText: Phaser.GameObjects.Text;
   board: PuzzleBoard;
-  settings: GeneralSettings = {
-    theme: themes.boyish,
-    game: GameSettings.Normal({ screenWidth: 600, screenHeight: 1200 }),
-  };
+  settings: GeneralSettings;
 
   constructor(readonly store = singleton(StorageBase, "ZwapGame")) {
     super("ZwapGame");
   }
 
   create() {
+    // get screen width and height from Phaser Game
+    const gameSettings = GameSettings.Normal;
+    const environment = EnvironmentSettings.fromBoardSize(
+      gameSettings.columns,
+      gameSettings.rows,
+    );
+    this.settings = {
+      theme: themes.boyish,
+      game: gameSettings,
+      environment,
+    };
     this.camera = this.cameras.main;
-    this.background = this.add.image(300, 600, "background");
+    console.log("ZwapGame", this.settings);
+    this.background = this.add
+      .image(
+        environment.screenWidth / 2,
+        environment.screenHeight / 2,
+        "background",
+      )
+      .setDisplaySize(environment.screenWidth, environment.screenHeight);
     this.background.setAlpha(0.3);
 
     void this.store
       .get<PuzzleBoardState>("current-game")
       .then((game) => {
-        this.board = game
-          ? new PuzzleBoard(this, game)
-          : PuzzleBoard.fromSettings(this);
+        if (!game || !game.settings) {
+          console.log("No game found, creating new game");
+          this.board = PuzzleBoard.fromSettings(this);
+        } else {
+          this.settings.game = ensure(
+            GameSettings,
+            game.settings,
+            GameSettings.Normal,
+          );
+          this.board = new PuzzleBoard(this, game);
+        }
         return this.board.startGame();
       })
       .then(() => {
-        cons.log("Game loaded", ...this.board.toLog());
+        console.log("Game loaded", ...this.board.toLog());
       })
       .catch((e) => {
-        cons.error("Error loading game", e);
+        console.error("Error loading game", e);
       });
 
     EventBus.emit("current-scene-ready", this);
   }
 
   async saveGame(game: Json) {
-    cons.log(game);
+    console.log(game);
     return this.store.set("current-game", game);
   }
 

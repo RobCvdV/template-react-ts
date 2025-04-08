@@ -7,6 +7,7 @@ export default defineConfig({
   base: "./",
   plugins: [tsconfigPaths(), react()],
   server: {
+    host: true,
     port: 8080,
   },
 });

@@ -1,11 +1,4 @@
-import {
-  Block,
-  BlockData,
-  BlockType,
-  Bomb,
-  GameSettings,
-  ZwapGame,
-} from "@/game";
+import { Block, BlockData, BlockType, Bomb, ZwapGame } from "@/game";
 import { getUuid, Id } from "@core";
 import Container = Phaser.GameObjects.Container;
 
@@ -17,10 +10,8 @@ export function makeBlock(
   row?: number,
 ): Block {
   const {
-    settings: {
-      game: { blockSpace, halfSpace },
-    },
-  } = scene;
+    environment: { blockSpace, halfSpace },
+  } = scene.settings;
   const x = col !== undefined ? halfSpace + col * blockSpace : state.x;
   const y = row !== undefined ? halfSpace + row * blockSpace : state.y;
   let bl: Block;
@@ -35,15 +26,18 @@ export function makeBlock(
   return bl;
 }
 
-export function randomBlockData(settings: GameSettings): BlockData {
-  const { maxColors, maxBlockTypes } = settings;
+export function randomBlockData(scene: ZwapGame): BlockData {
+  const {
+    environment: env,
+    game: { maxColors, maxBlockTypes },
+  } = scene.settings;
   return {
     id: getUuid(),
     color: Math.floor(Math.random() * maxColors),
     type: Math.floor(Math.random() * maxBlockTypes),
     x: 0,
     y: 0,
-    size: { width: settings.blockSize, height: settings.blockSize },
+    size: { width: env.blockSize, height: env.blockSize },
   };
 }
 
@@ -53,11 +47,5 @@ export function makeRandomBlock(
   row: number,
   container: Container,
 ): Block {
-  return makeBlock(
-    scene,
-    randomBlockData(scene.settings.game),
-    container,
-    col,
-    row,
-  );
+  return makeBlock(scene, randomBlockData(scene), container, col, row);
 }

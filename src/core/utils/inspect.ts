@@ -1,4 +1,4 @@
-import { cons, Struct } from "@core";
+import { Struct } from "@core";
 
 const type = (a: unknown) => {
   if (a === undefined) return "undefined";
@@ -10,7 +10,7 @@ const type = (a: unknown) => {
 };
 
 export const inspect = (...args: any[]) => {
-  cons.debug(
+  console.debug(
     `\nInspecting \x1b[36m${args.length}\x1b[0m args:\n${args
       .map((a, i) => {
         const t = type(a);

@@ -1,7 +1,5 @@
 import {
-  ConsLogger,
   Exception,
-  getNamedLogs,
   Id,
   isDefined,
   Json,
@@ -37,7 +35,6 @@ export const removeId = <T extends Json>(d: T[], id: Id) => {
 // This Gateway is like the InMemoryGateway, but also stores state to AsyncStorage
 // Only use for local state only data. Is building block for other stored gateways.
 
-let cons: ConsLogger;
 export class StoredGateway<T extends JsonEntity = JsonEntity> {
   clearAllStores(): Promise<void> {
     this.storage.clearAll();
@@ -47,9 +44,7 @@ export class StoredGateway<T extends JsonEntity = JsonEntity> {
   constructor(
     readonly storageKey: string,
     readonly storage = singleton(StorageBase, storageKey),
-  ) {
-    cons = getNamedLogs({ name: "StoredGateway" });
-  }
+  ) {}
 
   public clear(): Promise<void> {
     this.storage.clearAll();
@@ -94,7 +89,7 @@ export class StoredGateway<T extends JsonEntity = JsonEntity> {
   }
 
   update(item: T): Promise<T> {
-    cons.log("update", item);
+    console.log("update", item);
     if (!this.storage.exists(item.id.toString())) {
       return Promise.reject(
         Exception.DoesNotExist.because(

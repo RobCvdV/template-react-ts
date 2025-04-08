@@ -1,4 +1,4 @@
-import { DateTime, ensureArray, getNamedLogs, Struct } from "@core";
+import { DateTime, ensureArray, Struct } from "@core";
 import {
   BlockSet,
   ChainReaction,
@@ -37,7 +37,6 @@ export type GameProgressState = {
 //   statistics: {},
 // };
 
-const cons = getNamedLogs({ name: "GameProgress" });
 export class GameProgress extends Struct<GameProgressState> {
   public started = (this.state.started as boolean) || false;
   public startMoment = DateTime.orNow(this.state.startMoment);
@@ -48,7 +47,10 @@ export class GameProgress extends Struct<GameProgressState> {
   public levelProgress = (this.state.levelProgress as number) || 0;
   public _turns = ensureArray(Turn, this.state.turns);
 
-  public _settings: GameSettings;
+  public _getSettings: () => GameSettings;
+  public get _settings(): GameSettings {
+    return this._getSettings();
+  }
 
   public movesWithoutReaction =
     (this.state.movesWithoutReaction as number) || 0;
@@ -83,17 +85,17 @@ export class GameProgress extends Struct<GameProgressState> {
       if (set.isPureType) {
         set.score *= scoringValues.pureSetMultiplier;
         if (set.containsKey) {
-          cons.log("PURE UNLOCK", set);
+          console.log("PURE UNLOCK", set);
         }
         if (set.bombs.length) {
-          cons.log("PURE BOMB", set);
+          console.log("PURE BOMB", set);
         }
       }
       if (set.bombs.length >= 2) {
         set.score *= scoringValues.bombMultiplier * set.bombs.length;
       }
       if (set.containsKey) {
-        cons.log("UNLOCK SOMETHING", set);
+        console.log("UNLOCK SOMETHING", set);
       }
     });
     reaction.sets.forEach(

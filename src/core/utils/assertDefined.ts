@@ -1,4 +1,4 @@
-import { cons, Exception } from "@core";
+import { Exception } from "@core";
 
 export function assertDefined<T>(
   value: T | undefined | null,
@@ -6,7 +6,7 @@ export function assertDefined<T>(
 ): asserts value is T {
   if (value === undefined || value === null) {
     const description = `Value should be defined: ${where}`;
-    cons.error(description);
+    console.error(description);
     throw Exception.IsNotValid.because(description);
   }
 }
