@@ -22,12 +22,22 @@ export const consSettings: {
   whitelist?: string[];
   blacklist?: string[];
   getIdentifier?: () => string;
-  addCaller?: boolean;
-} = {};
+  automaticTag: boolean;
+  addBrowserLink: boolean;
+} = {
+  whitelist: undefined,
+  blacklist: [],
+  getIdentifier: undefined,
+  automaticTag: true,
+  addBrowserLink: true,
+};
 
 function getCaller() {
   let caller = new Error().stack?.split("\n")[4]?.trim() ?? "[missing caller]";
   caller = caller.replace("at ", "");
+  if (!consSettings.addBrowserLink) {
+    caller = caller.split(" (")[0];
+  }
   //   .split("(")
   //   .map((x) => x.trim());
   // caller = callerArr.shift() ?? "[missing caller]";
@@ -144,11 +154,11 @@ export type ConsLogger = Console<Logger<LogArgs>> & {
 };
 
 function styledArgs(...args: any[]): { format: string; styles: string[] } {
-  let format = "";
+  let format = args[0];
+  args = args.slice(1);
   let styles = [] as string[];
-  if (typeof args[0] === "string" && format.includes("%c")) {
-    format = args[0];
-    styles = args.slice(1) as string[];
+  if (typeof format === "string" && format.includes("%c")) {
+    styles = args as string[];
   } else {
     format = [format, ...args]
       .map((arg) => {
@@ -174,8 +184,9 @@ function logNamed(
   ...args: any[]
 ) {
   let caller = tag ?? "";
-  if (consSettings.addCaller) {
+  if (consSettings.automaticTag) {
     caller = getCaller();
+    tag = caller.replace("new", "").trim().split(" ")[0];
   }
   if (
     consSettings.whitelist &&
@@ -193,9 +204,10 @@ function logNamed(
   const prefix = consSettings.getIdentifier
     ? `${consSettings.getIdentifier()} `
     : "";
+  const firstArg = `${stamp + prefix}%c${caller}%c${consSettings.addBrowserLink ? "\n" : " "}`;
   if (args.length === 1 && typeof args[0] === "function") {
     return cons[cmd](
-      `${stamp + prefix} %c${caller}%c\n`,
+      firstArg,
       `color: ${col}; font-weight: bold;`,
       "",
       args[0](),
@@ -203,7 +215,7 @@ function logNamed(
   }
   const { format, styles } = styledArgs(...args);
   return cons[cmd](
-    `${stamp + prefix}%c${caller}%c\n${format}`,
+    `${firstArg}${format}`,
     `color: ${col}; font-weight: bold;`,
     "",
     ...styles,
@@ -224,7 +236,7 @@ export const getLogColor = (tag: string): LogColor =>
             : "green";
 
 export const getNamedLogs = (options?: Partial<LogOptions>): ConsLogger => {
-  const color = options?.color ?? getLogColor(options?.name || "");
+  const color = options?.color ?? getLogColor(options?.name ?? "");
   const settings = {
     name: "",
     color,

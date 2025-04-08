@@ -12,5 +12,4 @@ export * from "./PuzzleBoard";
 export * from "./GameProgress";
 export * from "./GameSettings";
 export * from "./blockFactories";
-export * from "./ManageGameData";
 export * from "./Turn";
