@@ -1,4 +1,4 @@
-import { EnvironmentSettings, GameSettings, ZwapGame } from "@game";
+import { EnvironmentSettings, GameSettings, PuzzleBoard } from "@game";
 import Phaser from "phaser";
 import { ProgressBar } from "@/game/domains/ProgressBar.ts";
 import Container = Phaser.GameObjects.Container;
@@ -9,18 +9,16 @@ export class GameHeader extends Container {
   progressBar: ProgressBar;
   private scoreValue = 0;
 
-  constructor(public scene: ZwapGame) {
-    super(scene, 0, 0);
+  constructor(public board: PuzzleBoard) {
+    super(board.scene, 0, 0);
     this.scene.add.existing(this);
     this.setDepth(100);
-    this.setSize(
-      this.scene.settings.environment.screenWidth,
-      this.scene.settings.environment.offsetY,
-    );
+    this.setSize(this.env.screenWidth, this.env.offsetY);
     const { offsetY, screenWidth } = this.env;
     const centerX = screenWidth / 2;
-    const { text, bar } = this.theme;
     const margin = offsetY * 0.06;
+    const { text, bar } = this.theme;
+    const { score, level, levelProgress } = this.board.progress;
 
     const image = this.scene.add
       .image(0, 0, "background-hor")
@@ -31,7 +29,7 @@ export class GameHeader extends Container {
     this.add(image);
 
     this.score = this.scene.add
-      .text(margin, margin, "Score: 0", {
+      .text(margin, margin, `Score: ${score}`, {
         fontSize: offsetY * 0.4 + "px",
         color: text.rgba,
       })
@@ -39,7 +37,7 @@ export class GameHeader extends Container {
     this.add(this.score);
 
     this.level = this.scene.add
-      .text(centerX + margin, margin, "Level: 0", {
+      .text(centerX + margin, margin, `Level: ${level}`, {
         fontSize: offsetY * 0.3 + "px",
         color: text.rgba,
       })
@@ -53,20 +51,21 @@ export class GameHeader extends Container {
       centerX - margin * 2,
       (offsetY - margin) / 2,
       bar,
-      scene.gameSettings.progressNeeded,
+      board.settings.progressNeeded,
+      levelProgress,
     );
   }
 
   get theme() {
-    return this.scene.settings.theme.ui;
+    return this.board.theme.ui;
   }
 
   get env(): EnvironmentSettings {
-    return this.scene.settings.environment;
+    return this.board.env;
   }
 
   get settings(): GameSettings {
-    return this.scene.settings.game;
+    return this.board.settings;
   }
 
   updateScore(score: number) {

@@ -103,6 +103,10 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     return this.scene.settings.game;
   }
 
+  get theme() {
+    return this.scene.settings.theme;
+  }
+
   async startGame() {
     await this.letBlocksFall();
     this.controller.interactionDisabled = false;
@@ -495,7 +499,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   }
 
   private initHeader() {
-    this.header = new GameHeader(this.scene);
+    this.header = new GameHeader(this);
 
     // this._header.setInteractive(
     //   new Phaser.Geom.Rectangle(

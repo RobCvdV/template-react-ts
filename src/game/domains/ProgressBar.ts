@@ -31,6 +31,7 @@ export class ProgressBar {
       .rectangle(x, y, width, height)
       .setOrigin(0)
       .setStrokeStyle(3, color.color);
+    this.setProgress(progress);
     this.container?.add(border);
   }
 
@@ -47,6 +48,9 @@ export class ProgressBar {
       scaleX: width / this.levelProgressBar.width,
       duration: 500,
       ease: Phaser.Math.Easing.Sine.InOut,
+      onComplete: () => {
+        this.levelProgressBar.setDisplaySize(width, this.height);
+      },
     });
   }
 }

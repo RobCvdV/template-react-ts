@@ -95,4 +95,7 @@ export class ZwapGame extends Scene {
   get gameSettings(): GameSettings {
     return this.settings.game;
   }
+  get progress() {
+    return this.board.progress;
+  }
 }
