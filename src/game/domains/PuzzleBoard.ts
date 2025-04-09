@@ -15,21 +15,19 @@ import {
   Block,
   BlockData,
   BlockSet,
-  collectBlocks,
+  ConnectionLine,
   EnvironmentSettings,
   GameController,
+  GameFlow,
   GameHeader,
   GameProgress,
   GameProgressState,
   GameSettings,
   GameSettingsState,
   makeBlock,
-  makeConnectionLine,
   makeRandomBlock,
-  makeScoreBubble,
   MatchInfo,
   Selection,
-  swapBlocks,
   ZwapGame,
 } from "@game";
 import Container = Phaser.GameObjects.Container;
@@ -56,6 +54,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
   public header: GameHeader;
   readonly controller = new GameController();
   readonly scene: ZwapGame;
+  readonly connectionLine: ConnectionLine;
 
   // the only fields / props that need to be serialized to recreate the game at any point
   // in time. "settings" here are GameSettings, environment and theme are flexible and should NOT
@@ -83,6 +82,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
           makeBlock(this.scene, cell, this.board, c, -5 - r * 3),
         ),
       ) ?? Array.from({ length: this.settings.columns }, () => []);
+    this.connectionLine = new ConnectionLine(this);
   }
 
   static fromSettings(scene: ZwapGame): PuzzleBoard {
@@ -351,82 +351,27 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     this.controller.selected = block;
     this.controller.matchable = this.getAllSwappableWith(block);
     this.controller.matchable.forEach((b) => b.setMatchable(true));
+    this.connectionLine.setSelected(block);
     // console.log("selected", block.toLog());
   }
 
   deselect(): void {
-    this.controller.secondOption = undefined;
     this.controller.selected?.setSelected(false);
     this.controller.matchable.forEach((b) => b?.setMatchable(false));
     this.controller.matchable = [];
     this.controller.selected = undefined;
+    this.connectionLine.turnOff();
   }
 
-  async doReactions(block: Block) {
-    this.controller.interactionDisabled = true;
-    const match = this.getMatchInfo(block);
-    console.log(
-      "doReactions",
-      match.kind,
-      match.selection?.selected.toLog(),
-      match.selection?.second.toLog(),
-    );
-    switch (match.kind) {
-      case "none":
-        break;
-      case "swap":
-        this.deselect();
-        this.progress.addTurn(match);
-        await swapBlocks(this.scene, match.selection.selected, block);
-        this.swap(match.selection.selected, block);
-        await this.doChainReactions();
-        console.log("swap and chain reactions done");
-        break;
-      case "unlock":
-        console.log("unlock", match.selection);
-        break;
+  async handleMatch(match: MatchInfo) {
+    if (match.kind === "none") {
+      return;
     }
+    this.controller.interactionDisabled = true;
+    await new GameFlow(this.scene).doReactions(match);
+    this.deselect();
     await this.scene.saveGame(this.toJSON());
     this.controller.interactionDisabled = false;
-    console.log("interactionDisabled false");
-  }
-
-  async doChainReactions() {
-    let hasSets = true;
-    do {
-      hasSets = await this.collectSets();
-      console.log("doChainReactions", hasSets);
-    } while (hasSets);
-  }
-
-  async collectSets(): Promise<boolean> {
-    const sets = this.getBlockSets();
-    const reaction = this.progress.addChainReaction(sets);
-    console.log("collectSets", ...sets.flatMap((s) => s.toLog()));
-    if (sets.length === 0) {
-      return false;
-    }
-    await sets.mapAsync(async (st) => {
-      const keys = st.allBlocks.map((b) => b.id);
-      this.removeBlocks(keys);
-      return collectBlocks(this.scene, st);
-    });
-    if (reaction.scores.combo) {
-      const { x, y } = reaction.center;
-      makeScoreBubble(this.scene, x, y, `COMBO\n${reaction.scores.combo}`, {
-        col: Phaser.Display.Color.HexStringToColor("#ff0"),
-        baseRate: Phaser.Math.FloatBetween(0.8, 0.9),
-        sound: "combo",
-      });
-    }
-    this.header.updateScore(this.progress.score);
-    this.header.updateLevelProgress(this.progress.levelProgress);
-    console.log("after collectBlocks");
-    this.addBlocksToFillOnTop();
-    console.log("after addBlocksToFillOnTop");
-    await this.letBlocksFall();
-    console.log("after letBlocksFall", ...this.toLog());
-    return true;
   }
 
   handleEventDown(event: Pointer) {
@@ -444,20 +389,19 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     }
   }
 
-  dragLine?: Phaser.GameObjects.Particles.ParticleEmitter;
   handleEventUp(event: Pointer) {
     if (this.controller.interactionDisabled) {
       return;
     }
     event.event.stopPropagation();
     const block = this.getBlockAt(event);
-    this.dragLine?.destroy();
-    this.dragLine = undefined;
     if (!block) {
+      this.connectionLine.turnOff();
       return;
     }
     if (this.controller.selected) {
-      this.doReactions(block).catch(cons.i.error("handleEventUp"));
+      const match = this.getMatchInfo(block);
+      this.handleMatch(match).catch(cons.i.error("handleEventUp"));
     }
     if (this.controller.selected?.id !== block.id) {
       this.deselect();
@@ -471,26 +415,17 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     event.event.stopPropagation();
     const block = this.getBlockAt(event);
 
-    if (
-      this.controller.selected &&
-      block?.isMatchable &&
-      block.id !== this.controller.selected.id &&
-      block.id != this.controller.secondOption?.id
-    ) {
-      this.controller.secondOption = block;
-      // console.log("handleEventMove", "block:", block.x, block.y);
-      this.dragLine?.destroy();
-      this.dragLine = undefined;
-      this.dragLine = makeConnectionLine(
-        this.scene,
-        this.controller.selected,
-        block,
-      );
-      this.board.add(this.dragLine);
-    } else if (this.dragLine && !block.isMatchable) {
-      this.controller.secondOption = undefined;
-      this.dragLine.destroy();
-      this.dragLine = undefined;
+    if (this.controller.selected) {
+      if (
+        block?.isMatchable &&
+        block.id !== this.controller.selected.id &&
+        block.id != this.connectionLine.second?.id
+      ) {
+        this.connectionLine.updateEnd(block, "strong");
+      } else {
+        const localPos = this.getLocalPosition(event);
+        this.connectionLine.updateEnd(localPos, "weak");
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import { AnyObject, getUuid, logColors, waitMs } from "@core";
 import {
+  BlockBorder,
   BlockColor,
   BlockType,
   EnvironmentSettings,
@@ -30,7 +31,6 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   T,
   ZwapGame
 > {
-  private tween: Tween | undefined;
   public bType: BlockType;
   public color: Color;
   public bColor: BlockColor;
@@ -60,14 +60,12 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
     }
   }
 
-  // @ts-ignore
-  toJSON(): BlockData {
-    return this.data.getAll() as BlockData;
+  toJSON(): T {
+    return this.data.getAll() as T;
   }
 
   changeColor(colorNr: number): this {
     const { colors } = this.theme;
-    // console.log("Change color", colorNr, colors[colorNr]);
     this.color = Color.RGBStringToColor(colors[colorNr]);
     this.bColor = BlockColor.byId<BlockColor>(colorNr);
     this.setTint(this.color.color);
@@ -108,12 +106,12 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
     return this.get("type") === other.get("type");
   }
 
-  get selected(): boolean {
-    return !!this.get("isSelected");
-  }
-  set selected(selected: boolean) {
-    this.setSelected(selected);
-  }
+  // get selected(): boolean {
+  //   return !!this.get("isSelected");
+  // }
+  // set selected(selected: boolean) {
+  //   this.setSelected(selected);
+  // }
 
   toString(): string {
     return `${logColors.encircled}${logColors.bold}${this.bColor.fg} ${this.bType.code} ${logColors.reset}`;
@@ -129,37 +127,8 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   setSelected(selected: boolean): this {
     this.set("isSelected", selected);
     if (selected) {
-      const border = this.scene.add
-        .sprite(this.x, this.y, "block-border")
-        .setTint(this.tint)
-        .setAlpha(1)
-        .setScale(this.scale * 1.1)
-        .setDepth(2);
-      this.parentContainer?.add(border);
-      this.effects.border = border;
-      const startColor = this.color.clone().darken(10);
-      const endColor = this.color.clone().brighten(30);
-      this.tween = this.scene.tweens.addCounter({
-        from: 0,
-        to: 100,
-        duration: 300,
-        ease: "Sine.easeIn",
-        repeat: -1,
-        yoyo: true,
-        onUpdate: (tween: Phaser.Tweens.Tween) => {
-          const value = tween.getValue();
-          const color = Color.Interpolate.ColorWithColor(
-            startColor,
-            endColor,
-            100,
-            value,
-          );
-          border.setTint(color.color);
-        },
-      });
+      this.effects.border = new BlockBorder(this.scene.board, this).blink();
     } else {
-      this.tween?.stop();
-      this.tween = undefined;
       this.effects.border?.destroy();
       delete this.effects.border;
     }
@@ -173,35 +142,8 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   setMatchable(matchable: boolean): this {
     this.set("isMatchable", matchable);
     if (matchable) {
-      const startColor = this.color.clone();
-      const endColor = this.color.clone().brighten(30);
-      const border = this.scene.add
-        .sprite(this.x, this.y, "block-border")
-        .setTint(this.tint)
-        .setAlpha(1)
-        .setScale(this.scale * 1.1)
-        .setDepth(2);
-      this.parentContainer?.add(border);
-      this.effects.border = border;
-      this.tween = this.scene.tweens.addCounter({
-        from: 0,
-        to: 100,
-        duration: 300,
-        ease: "Sine.easeIn",
-        onUpdate: (tween: Phaser.Tweens.Tween) => {
-          const value = tween.getValue();
-          const color = Color.Interpolate.ColorWithColor(
-            startColor,
-            endColor,
-            100,
-            value,
-          );
-          border.setTint(color.color);
-        },
-      });
+      this.effects.border = new BlockBorder(this.scene.board, this);
     } else {
-      this.tween?.stop();
-      this.tween = undefined;
       this.effects.border?.destroy();
       delete this.effects.border;
     }

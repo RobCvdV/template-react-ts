@@ -7,11 +7,8 @@ export async function swapBlocks(scene: Scene, selected: Block, second: Block) {
     const selectedY = selected.y;
     const secondX = second.x;
     const secondY = second.y;
-    selected.parentContainer.moveTo(
-      selected,
-      selected.parentContainer.length - 1,
-    );
-    second.parentContainer.moveTo(second, second.parentContainer.length - 1);
+    selected.parentContainer.bringToTop(selected);
+    second.parentContainer.bringToTop(second);
 
     const distance = Phaser.Math.Distance.Between(
       selectedX,

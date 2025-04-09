@@ -1,4 +1,4 @@
-import { Block, Bomb } from "@domains";
+import { Block, Bomb } from "@game";
 import Vector2 = Phaser.Math.Vector2;
 
 export class BlockSet {

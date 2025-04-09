@@ -1,11 +1,17 @@
-import { AnyObject, assertDefined, ensureArray, Struct } from "@core";
+import {
+  AnyObject,
+  assertDefined,
+  ensureArray,
+  ensureList,
+  Struct,
+} from "@core";
 import { Block, BlockSet, MatchInfo } from "@game";
 import Vector2 = Phaser.Math.Vector2;
 
 export class ChainReaction extends Struct {
   // readonly type: ReactionType
-  readonly sets = ensureArray(BlockSet, this.state.sets);
-  readonly addedBlocks = ensureArray(Block, this.state.addedBlocks);
+  readonly sets = ensureList(BlockSet, this.state.sets);
+  readonly addedBlocks = ensureList(Block, this.state.addedBlocks);
   public reactionNr = this.state.reactionNr ?? (0 as number);
   readonly scores: AnyObject<number> = this.state.scores ?? {};
 

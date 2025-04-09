@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { GameObjects } from "phaser";
 import { assertDefined, getUuid, Size, toJson } from "@core";
+import JSONGameObject = Phaser.Types.GameObjects.JSONGameObject;
 
 /**
  * @typedef {Object} SpriteData
@@ -8,7 +9,7 @@ import { assertDefined, getUuid, Size, toJson } from "@core";
  * @property {number} [y] - The y-coordinate of the sprite.
  * @property {string} [texture] - The texture key of the sprite.
  */
-export type SpriteData = {
+export type SpriteData = JSONGameObject & {
   id: string;
   x: number;
   y: number;
@@ -26,6 +27,7 @@ export type SpriteData = {
 export class GameObjectStruct<
   T extends SpriteData = SpriteData,
   S extends Phaser.Scene = Phaser.Scene,
+  K extends keyof T = keyof T,
 > extends GameObjects.Sprite {
   /**
    * Creates an instance of GameObjectStruct.
@@ -48,7 +50,6 @@ export class GameObjectStruct<
     this.addToUpdateList();
   }
 
-  // @ts-ignore
   toJSON(): T {
     return toJson(this.data.getAll());
   }
@@ -73,7 +74,7 @@ export class GameObjectStruct<
     return this;
   }
 
-  set<K extends keyof T>(key: K, value: T[K]): this {
+  set<V = T[K]>(key: K, value: V): this {
     this.data.set(key, value);
     return this;
   }

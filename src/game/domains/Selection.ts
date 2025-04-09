@@ -1,4 +1,4 @@
-import { Block } from "@domains";
+import { Block } from "@game";
 
 export type Selection = {
   selected?: Block;

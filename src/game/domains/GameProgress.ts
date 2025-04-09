@@ -1,4 +1,4 @@
-import { cons, DateTime, ensureArray, Struct } from "@core";
+import { cons, DateTime, ensureArray, List, Struct } from "@core";
 import {
   BlockSet,
   ChainReaction,
@@ -72,7 +72,7 @@ export class GameProgress extends Struct<GameProgressState> {
     return this._turns[this._turns.length - 1];
   }
 
-  addChainReaction(sets: BlockSet[]): ChainReaction {
+  addChainReaction(sets: List<BlockSet>): ChainReaction {
     const reaction = this.turn.addChainReaction(sets);
     const { scoringValues } = this._settings;
     reaction.sets.forEach((st) => {
