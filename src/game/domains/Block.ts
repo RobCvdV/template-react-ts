@@ -1,4 +1,4 @@
-import { AnyObject, getUuid, logColors, waitMs } from "@core";
+import { getUuid, logColors, waitMs } from "@core";
 import {
   BlockBorder,
   BlockColor,
@@ -13,9 +13,6 @@ import {
 } from "@game";
 import * as Phaser from "phaser";
 import Color = Phaser.Display.Color;
-import Sprite = Phaser.GameObjects.Sprite;
-import Tween = Phaser.Tweens.Tween;
-import ParticleEmitter = Phaser.GameObjects.Particles.ParticleEmitter;
 
 export type BlockData = Omit<SpriteData, "size" | "texture"> & {
   color: number;
@@ -35,7 +32,7 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   public color: Color;
   public bColor: BlockColor;
   declare public scene: ZwapGame;
-  protected effects: AnyObject<Sprite | Tween | ParticleEmitter> = {};
+  protected border: BlockBorder | undefined;
 
   constructor(scene: ZwapGame, block: T) {
     const typeNr = block.type ?? 0;
@@ -62,6 +59,13 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
 
   toJSON(): T {
     return this.data.getAll() as T;
+  }
+
+  preUpdate(time: number, delta: number) {
+    super.preUpdate(time, delta);
+    if (this.border) {
+      this.border.setPosition(this.x, this.y);
+    }
   }
 
   changeColor(colorNr: number): this {
@@ -127,11 +131,17 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   setSelected(selected: boolean): this {
     this.set("isSelected", selected);
     if (selected) {
-      this.effects.border = new BlockBorder(this.scene.board, this).blink();
+      this.border = new BlockBorder(this.scene.board, this).blink();
     } else {
-      this.effects.border?.destroy();
-      delete this.effects.border;
+      this.border?.destroy();
     }
+    return this;
+  }
+
+  destroy(): this {
+    this.scene?.tweens.killTweensOf(this);
+    this.border?.destroy();
+    super.destroy();
     return this;
   }
 
@@ -142,10 +152,9 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
   setMatchable(matchable: boolean): this {
     this.set("isMatchable", matchable);
     if (matchable) {
-      this.effects.border = new BlockBorder(this.scene.board, this);
+      this.border = new BlockBorder(this.scene.board, this);
     } else {
-      this.effects.border?.destroy();
-      delete this.effects.border;
+      this.border?.destroy();
     }
     return this;
   }

@@ -115,6 +115,23 @@ export class GameProgress extends Struct<GameProgressState> {
     return reaction;
   }
 
+  get shouldLevelUp(): boolean {
+    const { levelProgress } = this;
+    const { progressNeeded } = this._settings;
+    if (levelProgress >= progressNeeded) {
+      return true;
+    }
+    return false;
+  }
+
+  levelUp(): GameProgress {
+    this.levelProgress = 0;
+    this.score += this.level * 100;
+    this.level += 1;
+    this.movesWithoutReaction = 0;
+    return this;
+  }
+
   // getBlocksPlannedForMove(move: number): PlannedBlock[] {
   //   return this.plannedBlocks.filter(b => b.move === move);
   // }

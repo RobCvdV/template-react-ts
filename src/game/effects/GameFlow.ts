@@ -5,6 +5,7 @@ import {
   swapBlocks,
   ZwapGame,
 } from "@game";
+import { waitSeconds } from "@core";
 
 export class GameFlow {
   constructor(public scene: ZwapGame) {}
@@ -21,7 +22,7 @@ export class GameFlow {
     return this.scene.progress;
   }
 
-  async doReactions(match: MatchInfo) {
+  async doMatch(match: MatchInfo) {
     const { selected, second } = match.selection;
 
     console.log(
@@ -37,7 +38,7 @@ export class GameFlow {
         this.progress.addTurn(match);
         await swapBlocks(this.scene, selected, second);
         this.board.swap(selected, second);
-        await this.doChainReactions();
+        await this.doReactions();
         console.log("swap and chain reactions done");
         break;
       case "unlock":
@@ -46,11 +47,25 @@ export class GameFlow {
     }
   }
 
+  async doReactions() {
+    await this.doChainReactions();
+    if (this.progress.shouldLevelUp) {
+      this.progress.levelUp();
+      this.header.updateLevelProgress(this.progress.levelProgress);
+      this.header.updateLevel(this.progress.level);
+      this.header.updateScore(this.progress.score);
+      this.scene.sound.play("levelup", {
+        rate: 1.3,
+      });
+      await waitSeconds(2);
+      console.log("after level up", ...this.board.toLog());
+    }
+  }
+
   async doChainReactions() {
     let hasSets = true;
     do {
       hasSets = await this.doReaction();
-      console.log("doChainReactions", hasSets);
     } while (hasSets);
   }
 

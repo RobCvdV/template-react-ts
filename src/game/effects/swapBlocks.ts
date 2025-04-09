@@ -15,7 +15,6 @@ export async function swapBlocks(
     const connectionLine = new ConnectionLine(scene.board);
     connectionLine.setSelected(selected);
     connectionLine.updateEnd(second, "active");
-
     const distance = Phaser.Math.Distance.Between(
       selectedX,
       selectedY,

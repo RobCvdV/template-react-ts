@@ -66,7 +66,7 @@ export class BlockBorder extends Sprite {
   destroy(): void {
     this.tween?.stop();
     this.tween = undefined;
-    this.scene.tweens.add({
+    this.scene?.tweens?.add({
       targets: this,
       alpha: 0,
       duration: 300,

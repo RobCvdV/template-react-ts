@@ -30,6 +30,7 @@ import {
   Selection,
   ZwapGame,
 } from "@game";
+import mobile from "is-mobile";
 import Container = Phaser.GameObjects.Container;
 import Pointer = Phaser.Input.Pointer;
 import Vector2 = Phaser.Math.Vector2;
@@ -216,16 +217,6 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     this.data[x][y] = newBlock;
   }
 
-  getBlockAt(pos: Position | Pointer): Block {
-    let { x, y } = pos;
-    if (pos instanceof Pointer) {
-      const localPos = this.getLocalPosition(pos);
-      x = Math.floor(localPos.x / this.env.blockSpace);
-      y = this.settings.rows - Math.floor(localPos.y / this.env.blockSpace) - 1;
-    }
-    return this.data[x][y];
-  }
-
   private _sets: BlockSet[] = [];
   findSetForBlock(block: Block): BlockSet | undefined {
     const existing = this._sets.find((set) => set.hasBlock(block));
@@ -340,10 +331,6 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       .map(([_x, _y]) => this.getBlockAt({ x: _x, y: _y }));
   }
 
-  getLocalPosition(pos: Position): Vector2 {
-    return this.board.getLocalTransformMatrix().applyInverse(pos.x, pos.y);
-  }
-
   select(block: Block): void {
     this.controller.selected?.setSelected(false);
     this.controller.matchable.forEach((b) => b.setMatchable(false));
@@ -362,13 +349,30 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     this.connectionLine.turnOff();
   }
 
+  getBlockAt(pos: Position | Pointer, offset?: boolean): Block {
+    let { x, y } = pos;
+    if (pos instanceof Pointer) {
+      const localPos = this.getLocalPosition(pos, offset);
+      x = Math.floor(localPos.x / this.env.blockSpace);
+      y = this.settings.rows - Math.floor(localPos.y / this.env.blockSpace) - 1;
+    }
+    return this.data[x][y];
+  }
+
+  getLocalPosition(pos: Position, offset = false): Vector2 {
+    const offsetY = this.env.isMobile && offset ? this.env.blockSize : 0;
+    return this.board
+      .getLocalTransformMatrix()
+      .applyInverse(pos.x, pos.y - offsetY);
+  }
+
   async handleMatch(match: MatchInfo) {
     if (match.kind === "none") {
       return;
     }
     this.controller.interactionDisabled = true;
-    await new GameFlow(this.scene).doReactions(match);
     this.deselect();
+    await new GameFlow(this.scene).doMatch(match);
     await this.scene.saveGame(this.toJSON());
     this.controller.interactionDisabled = false;
   }
@@ -382,7 +386,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     if (block) {
       if (!this.controller.selected) {
         this.select(block);
-      } else if (block === this.controller.selected) {
+      } else if (block === this.controller.selected || !block.isMatchable) {
         this.deselect();
       }
     }
@@ -393,17 +397,17 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       return;
     }
     event.event.stopPropagation();
-    const block = this.getBlockAt(event);
-    if (!block) {
+    const useOffset = this.connectionLine.isActive;
+    const block = this.getBlockAt(event, useOffset);
+    const isSelected = this.controller.selected?.id === block.id;
+    if (!block || (isSelected && this.env.isMobile)) {
       this.connectionLine.turnOff();
       return;
     }
-    if (this.controller.selected) {
+    if (this.controller.selected && !isSelected) {
       const match = this.getMatchInfo(block);
-      this.connectionLine.updateEnd(block, "active");
       this.handleMatch(match).catch(cons.i.error("handleEventUp"));
-    }
-    if (this.controller.selected?.id !== block.id) {
+      this.connectionLine.turnOff();
       this.deselect();
     }
   }
@@ -413,15 +417,19 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
       return;
     }
     event.event.stopPropagation();
-    const block = this.getBlockAt(event);
+    let block = this.getBlockAt(event);
+    if (this.controller.selected?.id === block.id) {
+      return;
+    }
 
+    block = this.getBlockAt(event, true);
     if (this.controller.selected) {
       if (block?.isMatchable && block.id !== this.controller.selected.id) {
-        if (block.id != this.connectionLine.second?.id) {
+        if (block.id != this.connectionLine.end?.id) {
           this.connectionLine.updateEnd(block, "strong");
         }
       } else {
-        const localPos = this.getLocalPosition(event);
+        const localPos = this.getLocalPosition(event, true);
         this.connectionLine.updateEnd(localPos, "weak");
       }
     }
@@ -433,25 +441,12 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
 
   private initHeader() {
     this.header = new GameHeader(this);
-
-    // this._header.setInteractive(
-    //   new Phaser.Geom.Rectangle(
-    //     this._header.width / 2,
-    //     this._header.height / 2,
-    //     this._header.width,
-    //     this._header.height,
-    //   ),
-    //   Phaser.Geom.Rectangle.Contains,
-    // );
-    //
-    // this._header.on("pointerdown", this.handleEventDown.bind(this));
-    // this._header.on("pointermove", this.handleEventMove.bind(this));
-    // this._header.on("pointerup", this.handleEventUp.bind(this));
   }
 
   private initBoard() {
+    const offsetY = this.env.offsetY - (mobile() ? this.env.blockSpace : 0);
     this.board = this.scene.add
-      .container(this.env.offsetX, this.env.offsetY)
+      .container(this.env.offsetX, offsetY)
       .setSize(this.env.width, this.env.height);
 
     this.board.setInteractive(

@@ -1,4 +1,4 @@
-import { Block, PuzzleBoard } from "@game";
+import { Block, makeBlock, PuzzleBoard } from "@game";
 import { BlendModes } from "phaser";
 import { Position } from "@core";
 import ParticleEmitterConfig = Phaser.Types.GameObjects.Particles.ParticleEmitterConfig;
@@ -24,11 +24,23 @@ const quantityFactor = {
   strong: 0.08,
   active: 0.3,
 };
-const lifetime = {
+const lifespan = {
   none: 0,
   weak: 200,
   strong: 200,
   active: 50,
+};
+const blockAlpha = {
+  none: 0,
+  weak: 0.5,
+  strong: 0.2,
+  active: 0,
+};
+const sound = {
+  none: "",
+  weak: "electric-faint",
+  strong: "electric-hard",
+  active: "electric-hard",
 };
 const modeTint = {
   none: 0x000000,
@@ -40,15 +52,15 @@ const modeTint = {
 export class ConnectionLine extends Phaser.GameObjects.Particles
   .ParticleEmitter {
   selected?: Block;
-  second?: Block;
-  end?: Position;
+  end?: Block;
   mode: ConnectionMode = "none";
+  soundKey: null | number = null;
 
   constructor(public pb: PuzzleBoard) {
     super(pb.scene, 0, 0, "blue-light", {
       ...config,
       tint: () => modeTint[this.mode],
-      lifespan: () => lifetime[this.mode],
+      lifespan: () => lifespan[this.mode],
     });
     this.setDepth(15).setBlendMode(Phaser.BlendModes.ADD);
     this.scene.add.existing(this);
@@ -69,10 +81,16 @@ export class ConnectionLine extends Phaser.GameObjects.Particles
 
   turnOff() {
     this.emitting = false;
+    this.end?.destroy();
     this.end = undefined;
     this.selected = undefined;
-    this.second = undefined;
     this.emitZones.forEach((zone) => this.removeEmitZone(zone));
+    this.scene.sound.stopByKey("electric-faint");
+    this.scene.sound.stopByKey("electric-hard");
+  }
+
+  get isActive() {
+    return this.emitting;
   }
 
   setSelected(selected: Block) {
@@ -80,19 +98,49 @@ export class ConnectionLine extends Phaser.GameObjects.Particles
   }
 
   updateEnd(posOrBlock: Position | Block, mode: ConnectionMode = "weak") {
+    if (this.mode !== mode) {
+      this.scene.sound.stopByKey("electric-faint");
+      this.scene.sound.stopByKey("electric-hard");
+      this.scene.sound.play(sound[mode], {
+        rate: 1.2,
+        volume: mode === "weak" ? 0.4 : 0.7,
+        loop: true,
+      });
+    }
     this.mode = mode;
     if (!this.selected || mode === "none") {
       this.emitting = false;
+      this.end?.destroy();
       this.end = undefined;
-      this.second = undefined;
       return;
     }
     if (!this.end) {
       this.emitting = true;
+      this.end = makeBlock(
+        this.pb.scene,
+        {
+          ...this.selected.toJSON(),
+          x: posOrBlock.x,
+          y: posOrBlock.y,
+          isMatchable: true,
+          isSelected: false,
+        },
+        this.pb.board,
+      )
+        .setTint(0xffffff)
+        .setAlpha(0.5);
+      this.pb.board.bringToTop(this.end);
+    } else {
+      this.scene.tweens.add({
+        targets: this.end,
+        x: posOrBlock.x,
+        y: posOrBlock.y,
+        alpha: blockAlpha[mode],
+        duration: 200,
+        ease: "Power2",
+      });
     }
     this.pb.board.bringToTop(this);
-    this.end = posOrBlock;
-    this.second = posOrBlock instanceof Block ? posOrBlock : undefined;
     const line = new Phaser.Geom.Line(
       this.selected.x,
       this.selected.y,

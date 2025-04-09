@@ -1,4 +1,5 @@
 import { Struct } from "@core";
+import mobile from "is-mobile";
 
 export type EnvironmentSettingsState = {
   screenWidth: number;
@@ -8,13 +9,14 @@ export type EnvironmentSettingsState = {
 };
 
 export class EnvironmentSettings extends Struct {
+  readonly isMobile = mobile();
   readonly screenWidth = this.state.screenWidth;
   readonly screenHeight = this.state.screenHeight;
   readonly columns = this.state.columns;
   readonly rows = this.state.rows;
   readonly blockSpace = Math.min(
     this.screenWidth / this.columns,
-    (this.screenHeight - 100) / this.rows,
+    this.screenHeight / (this.rows + (this.isMobile ? 3 : 2)),
   );
   readonly halfSpace = this.blockSpace / 2;
   readonly blockSize = this.blockSpace * 0.9;
