@@ -11,6 +11,10 @@ const config: Phaser.Types.Core.GameConfig = {
   parent: "game-container",
   backgroundColor: "#020808",
   scene: [Boot, Preloader, MainMenu, ZwapGame, GameOver],
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
 };
 
 const StartGame = (parent: string) => {

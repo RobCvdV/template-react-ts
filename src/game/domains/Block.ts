@@ -16,7 +16,7 @@ import Sprite = Phaser.GameObjects.Sprite;
 import Tween = Phaser.Tweens.Tween;
 import ParticleEmitter = Phaser.GameObjects.Particles.ParticleEmitter;
 
-export type BlockData = SpriteData & {
+export type BlockData = Omit<SpriteData, "size" | "texture"> & {
   color: number;
   type: number;
 
@@ -39,8 +39,13 @@ export class Block<T extends BlockData = BlockData> extends GameObjectStruct<
 
   constructor(scene: ZwapGame, block: T) {
     const typeNr = block.type ?? 0;
+    const { blockSize } = scene.settings.environment;
     const texture = scene.settings.theme.shapes[typeNr].blockAsset;
-    super(scene, { ...block, texture });
+    super(scene, {
+      ...block,
+      texture,
+      size: { width: blockSize, height: blockSize },
+    });
     this.setDataEnabled();
     this.setData(block);
     this.addToUpdateList();
