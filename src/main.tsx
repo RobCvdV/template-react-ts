@@ -4,8 +4,8 @@ import { consSettings } from "@core";
 import App from "./App.tsx";
 
 consSettings.blacklist = [];
-consSettings.automaticTag = true;
-consSettings.addBrowserLink = true;
+consSettings.automaticTag = false;
+consSettings.addBrowserLink = false;
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

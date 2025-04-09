@@ -352,7 +352,6 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     this.controller.matchable = this.getAllSwappableWith(block);
     this.controller.matchable.forEach((b) => b.setMatchable(true));
     this.connectionLine.setSelected(block);
-    // console.log("selected", block.toLog());
   }
 
   deselect(): void {
@@ -401,6 +400,7 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     }
     if (this.controller.selected) {
       const match = this.getMatchInfo(block);
+      this.connectionLine.updateEnd(block, "active");
       this.handleMatch(match).catch(cons.i.error("handleEventUp"));
     }
     if (this.controller.selected?.id !== block.id) {
@@ -416,12 +416,10 @@ export class PuzzleBoard extends Struct<PuzzleBoardState> {
     const block = this.getBlockAt(event);
 
     if (this.controller.selected) {
-      if (
-        block?.isMatchable &&
-        block.id !== this.controller.selected.id &&
-        block.id != this.connectionLine.second?.id
-      ) {
-        this.connectionLine.updateEnd(block, "strong");
+      if (block?.isMatchable && block.id !== this.controller.selected.id) {
+        if (block.id != this.connectionLine.second?.id) {
+          this.connectionLine.updateEnd(block, "strong");
+        }
       } else {
         const localPos = this.getLocalPosition(event);
         this.connectionLine.updateEnd(localPos, "weak");

@@ -1,7 +1,10 @@
-import { Scene } from "phaser";
-import { Block } from "@game";
+import { Block, ConnectionLine, ZwapGame } from "@game";
 
-export async function swapBlocks(scene: Scene, selected: Block, second: Block) {
+export async function swapBlocks(
+  scene: ZwapGame,
+  selected: Block,
+  second: Block,
+) {
   return new Promise<void>((resolve) => {
     const selectedX = selected.x;
     const selectedY = selected.y;
@@ -9,6 +12,9 @@ export async function swapBlocks(scene: Scene, selected: Block, second: Block) {
     const secondY = second.y;
     selected.parentContainer.bringToTop(selected);
     second.parentContainer.bringToTop(second);
+    const connectionLine = new ConnectionLine(scene.board);
+    connectionLine.setSelected(selected);
+    connectionLine.updateEnd(second, "active");
 
     const distance = Phaser.Math.Distance.Between(
       selectedX,
@@ -54,6 +60,7 @@ export async function swapBlocks(scene: Scene, selected: Block, second: Block) {
         const point = curve1.getPoint(t);
         target.x = point.x;
         target.y = point.y;
+        connectionLine.setSelected(target);
       },
       onComplete: () => {
         selected.x = secondX;
@@ -72,11 +79,13 @@ export async function swapBlocks(scene: Scene, selected: Block, second: Block) {
         const point = curve2.getPoint(t);
         target.x = point.x;
         target.y = point.y;
+        connectionLine.updateEnd(target, "active");
       },
       onComplete: () => {
         second.x = selectedX;
         second.y = selectedY;
         resolve();
+        connectionLine.destroy();
       },
     });
   });

@@ -1,82 +1,103 @@
 import { Block, PuzzleBoard } from "@game";
-import { BlendModes, GameObjects } from "phaser";
+import { BlendModes } from "phaser";
 import { Position } from "@core";
+import ParticleEmitterConfig = Phaser.Types.GameObjects.Particles.ParticleEmitterConfig;
 
 type ConnectionMode = "weak" | "strong" | "none" | "active";
-
+const config: ParticleEmitterConfig = {
+  emitting: false,
+  blendMode: BlendModes.ADD,
+  alpha: { start: 0.5, end: 0, ease: Phaser.Math.Easing.Sine.In },
+  lifespan: 200,
+  scale: {
+    start: 0.2,
+    end: 0.5,
+    ease: Phaser.Math.Easing.Sine.In,
+  },
+  speedX: [-10, 10],
+  speedY: [-10, 10],
+  quantity: 100,
+};
 const quantityFactor = {
   none: 0,
   weak: 0.01,
-  strong: 0.03,
-  active: 0.05,
+  strong: 0.08,
+  active: 0.3,
+};
+const lifetime = {
+  none: 0,
+  weak: 200,
+  strong: 200,
+  active: 50,
+};
+const modeTint = {
+  none: 0x000000,
+  weak: 0xffffff,
+  strong: 0x44ff44,
+  active: 0xff2222,
 };
 
-export class ConnectionLine extends GameObjects.GameObject {
-  dragLine: Phaser.GameObjects.Particles.ParticleEmitter;
+export class ConnectionLine extends Phaser.GameObjects.Particles
+  .ParticleEmitter {
   selected?: Block;
   second?: Block;
   end?: Position;
-  zones: (
-    | Phaser.GameObjects.Particles.Zones.RandomZone
-    | Phaser.GameObjects.Particles.Zones.EdgeZone
-  )[] = [];
+  mode: ConnectionMode = "none";
 
   constructor(public pb: PuzzleBoard) {
-    super(pb.scene, "ConnectionLine");
-    this.dragLine = this.scene.add
-      .particles(0, 0, "blue-light", {
-        emitting: false,
-        blendMode: BlendModes.ADD,
-        alpha: { start: 0.5, end: 0, ease: Phaser.Math.Easing.Sine.In },
-        lifespan: 200,
-        scale: {
-          start: 0.2,
-          end: 0.5,
-          ease: Phaser.Math.Easing.Sine.In,
-        },
-        speedX: [-10, 10],
-        speedY: [-10, 10],
-        quantity: 100,
-      })
-      .setDepth(15)
-      .setBlendMode(Phaser.BlendModes.ADD);
-    pb.board.add(this.dragLine);
+    super(pb.scene, 0, 0, "blue-light", {
+      ...config,
+      tint: () => modeTint[this.mode],
+      lifespan: () => lifetime[this.mode],
+    });
+    this.setDepth(15).setBlendMode(Phaser.BlendModes.ADD);
+    this.scene.add.existing(this);
+    pb.board.add(this);
   }
 
-  update() {
-    if (this.selected?.active && this.second?.active) {
-      this.updateEnd(this.second, "active");
-    }
-  }
+  // preUpdate(time: number, delta: number) {
+  //   super.preUpdate(time, delta);
+  //   if (this.selected && this.second && this.mode === "active") {
+  //     console.log(
+  //       "YESSS PREE update connection line",
+  //       this.selected.x,
+  //       this.selected.y,
+  //     );
+  //     this.updateEnd(this.second, "active");
+  //   }
+  // }
 
   turnOff() {
-    this.dragLine.emitting = false;
+    this.emitting = false;
     this.end = undefined;
     this.selected = undefined;
-    this.zones.forEach((zone) => this.dragLine.removeEmitZone(zone));
-    this.zones = [];
+    this.second = undefined;
+    this.emitZones.forEach((zone) => this.removeEmitZone(zone));
   }
 
   setSelected(selected: Block) {
     this.selected = selected;
   }
 
-  updateEnd(pos: Position | Block, mode: ConnectionMode = "weak") {
+  updateEnd(posOrBlock: Position | Block, mode: ConnectionMode = "weak") {
+    this.mode = mode;
     if (!this.selected || mode === "none") {
-      this.dragLine.emitting = false;
+      this.emitting = false;
       this.end = undefined;
+      this.second = undefined;
       return;
     }
     if (!this.end) {
-      this.dragLine.emitting = true;
+      this.emitting = true;
     }
-    this.pb.board.bringToTop(this.dragLine);
-    this.end = pos;
+    this.pb.board.bringToTop(this);
+    this.end = posOrBlock;
+    this.second = posOrBlock instanceof Block ? posOrBlock : undefined;
     const line = new Phaser.Geom.Line(
       this.selected.x,
       this.selected.y,
-      pos.x,
-      pos.y,
+      posOrBlock.x,
+      posOrBlock.y,
     );
     const length = Phaser.Math.Distance.Between(
       line.x1,
@@ -84,15 +105,15 @@ export class ConnectionLine extends GameObjects.GameObject {
       line.x2,
       line.y2,
     );
-    this.dragLine.setQuantity(Math.floor(length * quantityFactor[mode]));
-    this.zones.forEach((zone) => this.dragLine.removeEmitZone(zone));
-    this.zones = this.dragLine.addEmitZone({
+    this.setQuantity(Math.floor(length * quantityFactor[mode]));
+    this.emitZones.forEach((zone) => this.removeEmitZone(zone));
+    this.addEmitZone({
       type: "random",
       source: new Phaser.Geom.Line(
         this.selected.x,
         this.selected.y,
-        pos.x,
-        pos.y,
+        posOrBlock.x,
+        posOrBlock.y,
       ),
       quantity: 1,
     });
