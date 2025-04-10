@@ -1,6 +1,17 @@
 import { Block, Bomb } from "@game";
 import Vector2 = Phaser.Math.Vector2;
 
+export function centerOfBlockSets(blockSets: BlockSet[]): Vector2 {
+  return blockSets
+    .reduce(
+      (center, blockSet) => {
+        return center.add(blockSet.center);
+      },
+      new Vector2(0, 0),
+    )
+    .divide(new Vector2(blockSets.length, blockSets.length));
+}
+
 export class BlockSet {
   score = 0;
   constructor(

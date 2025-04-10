@@ -98,16 +98,17 @@ export class GameProgress extends Struct<GameProgressState> {
         console.log("UNLOCK SOMETHING", st);
       }
     });
-    reaction.sets.forEach(
-      (set) => (set.score *= scoringValues.comboMultiplier),
+    reaction.scores.total = reaction.sets.reduce(
+      (multiplied, set) => multiplied * set.score,
+      1,
     );
-    if (reaction.sets.length > 1) {
-      reaction.scores.combo = scoringValues.combo * (reaction.sets.length - 1);
-    }
-    reaction.scores.total = reaction.sets.reduce((sum, set) => {
-      cons.log("set", set);
-      return sum + set.score;
-    }, reaction.scores.combo || 0);
+    // if (reaction.sets.length > 1) {
+    //   reaction.scores.combo = scoringValues.combo * (reaction.sets.length - 1);
+    // }
+    // reaction.sets.reduce((sum, set) => {
+    //   cons.log("set", set);
+    //   return sum + set.score;
+    // }, reaction.scores.combo || 0);
 
     this.score += reaction.scores.total;
     this.levelProgress += reaction.addedBlocks.length;

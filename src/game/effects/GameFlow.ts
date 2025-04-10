@@ -1,10 +1,4 @@
-import {
-  collectBlocks,
-  makeScoreBubble,
-  MatchInfo,
-  swapBlocks,
-  ZwapGame,
-} from "@game";
+import { collectBlockSets, MatchInfo, swapBlocks, ZwapGame } from "@game";
 import { waitSeconds } from "@core";
 
 export class GameFlow {
@@ -76,19 +70,9 @@ export class GameFlow {
       return false;
     }
     const reaction = this.progress.addChainReaction(sets);
-    await sets.mapAsync(async (st) => {
-      const keys = st.allBlocks.map((b) => b.id);
-      this.board.removeBlocks(keys);
-      return collectBlocks(this.scene, st);
-    });
-    if (reaction.scores.combo) {
-      const { x, y } = reaction.center;
-      makeScoreBubble(this.scene, x, y, `COMBO\n${reaction.scores.combo}`, {
-        col: Phaser.Display.Color.HexStringToColor("#ff0"),
-        baseRate: Phaser.Math.FloatBetween(0.6, 0.75),
-        sound: "combo",
-      });
-    }
+    const keys = sets.flatMap((st) => st.allBlocks.map((b) => b.id));
+    this.board.removeBlocks(keys);
+    await collectBlockSets(this.board, reaction);
     this.header.updateScore(this.progress.score);
     this.header.updateLevelProgress(this.progress.levelProgress);
     console.log("after collectBlocks");

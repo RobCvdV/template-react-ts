@@ -6,7 +6,9 @@ type ScoreBubbleOptions = {
   col?: Color;
   baseRate?: number;
   sound?: SoundAsset;
+  scale?: number;
   callback?: () => void;
+  tweenConfig?: Partial<Phaser.Types.Tweens.TweenBuilderConfig>;
 };
 
 export function makeScoreBubble(
@@ -18,7 +20,9 @@ export function makeScoreBubble(
     col = scene.theme.ui.text,
     baseRate = 1,
     sound = "tjing",
+    scale = 1,
     callback,
+    tweenConfig,
   }: ScoreBubbleOptions = {},
 ) {
   const { offsetY, blockSize, centerX } = scene.settings.environment;
@@ -28,7 +32,7 @@ export function makeScoreBubble(
   const rate = isString(score) ? baseRate : baseRate + score / 40;
   const scoreBubble = scene.add
     .text(x, y, `${text}`, {
-      fontSize: blockSize * 0.7 + "px",
+      fontSize: scale * blockSize * 0.7 + "px",
       color: "black",
       padding: { x: 10, y: 5 },
       stroke: col.rgba,
@@ -58,6 +62,25 @@ export function makeScoreBubble(
       scoreBubble.destroy();
       callback?.();
     },
+    ...tweenConfig,
   });
   return scoreBubble;
+}
+
+export function asyncScoreBubble(
+  scene: ZwapGame,
+  x: number,
+  y: number,
+  score: number | string,
+  options?: ScoreBubbleOptions,
+) {
+  return new Promise<void>((resolve) => {
+    const scoreBubble = makeScoreBubble(scene, x, y, score, {
+      ...options,
+      callback: () => {
+        resolve();
+      },
+    });
+    return scoreBubble;
+  });
 }

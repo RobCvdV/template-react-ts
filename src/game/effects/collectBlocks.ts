@@ -1,24 +1,92 @@
-import { BlockSet, makeScoreBubble, ZwapGame } from "@game";
+import Phaser from "phaser";
+import {
+  asyncScoreBubble,
+  BlockSet,
+  centerOfBlockSets,
+  ChainReaction,
+  makeScoreBubble,
+  PuzzleBoard,
+} from "@game";
 import { waitMs } from "@core";
+import Color = Phaser.Display.Color;
+
+export async function collectBlockSets(
+  game: PuzzleBoard,
+  reaction: ChainReaction,
+  onScore?: (score: number | string) => void,
+) {
+  const blockSets = reaction.sets;
+  const posTop = { x: 10, y: -game.env.offsetY * 0.75 };
+  const posScores =
+    blockSets.length > 1 ? centerOfBlockSets(blockSets) : posTop;
+  const sound = blockSets.length > 1 ? "combo" : "tjing";
+  const baseRate = blockSets.length > 1 ? 0.8 : 1;
+  await blockSets.mapAsync((blockSet) => {
+    return collectBlocks(game, blockSet, (bs) => {
+      const { x, y } = bs.center;
+      const score = bs.score;
+      onScore?.(score);
+      makeScoreBubble(game.scene, x, y, score, {
+        sound,
+        tweenConfig: {
+          ...posScores,
+          alpha: 1,
+          duration: 400,
+          baseRate,
+        },
+      });
+    });
+  });
+  if (blockSets.length > 1) {
+    await waitMs(500);
+    const scoresMultiply = blockSets.map((bs) => bs.score).join(" x ");
+    await asyncScoreBubble(
+      game.scene,
+      posScores.x,
+      posScores.y,
+      "COMBO\n" + scoresMultiply,
+      {
+        scale: 1.5,
+        sound: "weesh",
+        baseRate: 0.8,
+        col: Color.HexStringToColor("#ff0"),
+        tweenConfig: {
+          ...posScores,
+          alpha: 0,
+          duration: 300,
+        },
+      },
+    );
+    await asyncScoreBubble(
+      game.scene,
+      posScores.x,
+      posScores.y,
+      `${reaction.scores.total}`,
+      {
+        scale: 1.5,
+        col: Color.HexStringToColor("#ff0"),
+        tweenConfig: {
+          ...posTop,
+          duration: 500,
+        },
+      },
+    );
+  }
+}
 
 export async function collectBlocks(
-  scene: ZwapGame,
+  game: PuzzleBoard,
   blockSet: BlockSet,
-  callback?: () => void,
+  onComplete?: (bs: BlockSet) => void,
 ) {
   const blocks = blockSet.allBlocks;
-  const score = blockSet.score;
   const { x, y } = blockSet.center;
   const pitch = Math.log(12 - blocks.length) / Math.log(2) - 1;
-  scene.sound.play("woosh", {
+  game.scene.sound.play("woosh", {
     rate: Phaser.Math.FloatBetween(pitch, pitch + 0.2),
   });
 
-  const { color } = blocks[0];
-  const scoreColor = color.clone().brighten(50);
-
-  // blocks.forEach((block) => {
-  scene.tweens.add({
+  game.scene.tweens.add({
     targets: blocks,
     x,
     y,
@@ -27,7 +95,7 @@ export async function collectBlocks(
     scale: 0.5,
     duration: 300,
     onComplete: () => {
-      scene.tweens.add({
+      game.scene.tweens.add({
         targets: blocks,
         alpha: 0,
         scale: 0,
@@ -39,12 +107,8 @@ export async function collectBlocks(
           });
         },
       });
-      makeScoreBubble(scene, x, y, score, { col: scoreColor, callback });
-      // const pe = scene.add.particles(
-      //   centerX,
-      //   centerY,
+      onComplete?.(blockSet);
     },
-    // });
   });
   return waitMs(250);
 }
